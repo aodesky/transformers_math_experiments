@@ -274,20 +274,22 @@ function greedy_search_from_startpoint(db, obj::OBJ_TYPE)::Vector{OBJ_TYPE}
     disc_deriv = eval_discriminant_derivative(num, den)
 
     # Learning rate: 1/50
-    learning_rate = 1//50
+    learning_rate = 1/50
 
-    # Gradient descent step
-    t_current = Rational{BigInt}(num, den)
+    # Gradient descent step (work in Float64 then convert back to rational)
+    t_current = Float64(num) / Float64(den)
 
     if disc > 0
-        t_new = t_current - learning_rate * disc_deriv
+        t_new_float = t_current - learning_rate * Float64(disc_deriv)
     else
-        t_new = t_current + learning_rate * disc_deriv
+        t_new_float = t_current + learning_rate * Float64(disc_deriv)
     end
 
-    # Convert back to Int64 if possible, otherwise use smaller denominator
-    new_num_big = numerator(t_new)
-    new_den_big = denominator(t_new)
+    # Convert float back to rational with reasonable denominator
+    # Use rationalize with tolerance
+    t_new_rational = rationalize(BigInt, t_new_float, tol=1e-10)
+    new_num_big = numerator(t_new_rational)
+    new_den_big = denominator(t_new_rational)
 
     # Try to fit into Int64 range
     try
