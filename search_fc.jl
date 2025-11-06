@@ -14,7 +14,8 @@ using Dates
 #include("problem_triangle_free.jl")
 #include("problem_4_cycle_free.jl")
 #include("problem_permanent_avoid_123.jl")
-include("problem_elliptic_simple.jl")
+#include("problem_elliptic_simple.jl")      # Simple test curve: y² = x³ + tx + 1
+include("problem_mestre_rank12.jl")         # Mestre's rank ≥ 12 family (actual discriminant)
 
 
 #########################################################################################
@@ -160,8 +161,9 @@ function initial_lines()
         println("Using input file")
         open(input_file, "r") do file
             for line in eachline(file)
-                if length(line) == length(empty_starting_point())
-                    push!(lines, line)  # Add each line to the vector
+                line = strip(line)  # Remove whitespace
+                if !isempty(line)
+                    push!(lines, line)  # Add each non-empty line
                 end
             end
         end
