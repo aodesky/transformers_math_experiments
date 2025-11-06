@@ -385,6 +385,13 @@ end
 
 
 write_path = ARGS[1]
+
+# Ensure the output directory exists
+if !isdir(write_path)
+    mkpath(write_path)
+    println("Created directory: $write_path")
+end
+
 nb_local_searches = parse(Int,ARGS[2]) 
 num_initial_empty_objects = parse(Int,ARGS[3])
 final_database_size = parse(Int,ARGS[4])

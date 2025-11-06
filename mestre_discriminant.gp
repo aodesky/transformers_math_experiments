@@ -34,7 +34,7 @@ print("Computing elliptic curve from plane cubic...");
 /* This requires converting the plane cubic to Weierstrass form */
 /* For now, let's use a simpler approach: compute at a specific rational value */
 
-test_value = 1/2;
+test_value = 0;
 
 print("Testing at t = ", test_value);
 

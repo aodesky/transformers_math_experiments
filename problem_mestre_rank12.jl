@@ -97,6 +97,214 @@ const D_PRIME_COEFFS = BigInt[
     116724890597580319681815300992222752267149653311488000000
 ]
 
+# Weierstrass form coefficients: y^2 = x^3 + a4(t)*x + a6(t)
+# These are rational polynomials: a4(t) = A4_NUMER(t) / A4_DENOM
+# Computed from Mestre's plane cubic using Sage
+
+const A4_NUMER_COEFFS = BigInt[
+    -5013558100494028800,
+    -31223157822576691200,
+    36850819289195923200,
+    375767910105823324800,
+    -909015201933727021200,
+    627735360031439126400,
+    -190333976336927546400,
+    627968231066603606400,
+    -909272532073107781200,
+    376003880650827484800,
+    36714196278367683200,
+    -31220058312737011200,
+    -4996097133777388800,
+]
+const A4_DENOM = BigInt(3)
+
+const A6_NUMER_COEFFS = BigInt[
+    22668186571459155780894720000,
+    203387292236079580258713600000,
+    134498583657781883343636480000,
+    -3633649404971677060116049920000,
+    -1672385445663582687556688640000,
+    40212991310412954466845627840000,
+    -66623930317405025667601698960000,
+    -46203257144166699494281956480000,
+    292205940790151219565054099600000,
+    -429332179402122264136129783680000,
+    292343874284328539800854200400000,
+    -46390902011588484059487857280000,
+    -66508882717375442192538796560000,
+    40200621730127022808322677440000,
+    -1693906103722165170601285440000,
+    -3626101530671701430935032320000,
+    135762415484271030280730880000,
+    202896505624301923064140800000,
+    22566782308794025025387520000,
+]
+const A6_DENOM = BigInt(27)
+
+# Persistent GP/PARI process for efficient conductor computations
+mutable struct GPSession
+    process::Union{Base.Process, Nothing}
+    stdin::Union{IO, Nothing}
+    stdout::Union{IO, Nothing}
+    lock::ReentrantLock
+    id::Int
+end
+
+# Pool of GP sessions for parallelization
+const GP_SESSION_POOL = GPSession[]
+const GP_POOL_LOCK = ReentrantLock()
+
+function start_gp_session_single(session_id::Int, threads_per_session::Int)::GPSession
+    """Start a single GP/PARI session with specified number of threads"""
+    # Start GP with large stack, quiet mode, and suppress prompts
+    # Reduce stack to 200MB for faster startup (still plenty for conductors)
+    gp_cmd = `gp -q -s 200000000 --emacs`
+    process = open(gp_cmd, "r+")
+
+    # Configure GP/PARI threads (fire and forget, don't wait for response)
+    println(process.in, "default(nbthreads, $threads_per_session); print(1)")
+    flush(process.in)
+
+    # Quick verification with short timeout
+    ready = false
+    for i in 1:5
+        if !eof(process.out)
+            line = readline(process.out)
+            if !isempty(line)
+                ready = true
+                break
+            end
+        end
+        sleep(0.05)
+    end
+
+    if !ready
+        error("GP/PARI session $session_id failed to start")
+    end
+
+    return GPSession(process, process.in, process.out, ReentrantLock(), session_id)
+end
+
+function init_gp_session_pool(num_sessions::Int=10, threads_per_session::Int=12)
+    """Initialize a pool of GP/PARI sessions for parallel computation"""
+    lock(GP_POOL_LOCK) do
+        if !isempty(GP_SESSION_POOL)
+            return  # Already initialized
+        end
+
+        total_cores = Base.Sys.CPU_THREADS
+
+        # Adjust threads per session based on available cores
+        threads_per_session = max(1, div(total_cores, num_sessions))
+
+        println("Initializing GP/PARI pool with $num_sessions sessions (each with $threads_per_session threads)...")
+
+        # Start sessions in parallel using Julia tasks
+        tasks = Task[]
+        for i in 1:num_sessions
+            task = @async begin
+                try
+                    start_gp_session_single(i, threads_per_session)
+                catch e
+                    println("Warning: Failed to start GP session $i: $e")
+                    nothing
+                end
+            end
+            push!(tasks, task)
+        end
+
+        # Wait for all sessions to start
+        print("Starting sessions")
+        for (i, task) in enumerate(tasks)
+            session = fetch(task)
+            if session !== nothing
+                push!(GP_SESSION_POOL, session)
+            end
+            print(".")
+        end
+        println()
+
+        println("GP/PARI pool ready with $(length(GP_SESSION_POOL)) sessions.")
+    end
+end
+
+function stop_gp_session_pool()
+    """Stop all GP/PARI sessions in the pool"""
+    lock(GP_POOL_LOCK) do
+        for session in GP_SESSION_POOL
+            if session.process !== nothing
+                try
+                    println(session.stdin, "quit()")
+                    close(session.stdin)
+                    close(session.stdout)
+                catch
+                end
+            end
+        end
+        empty!(GP_SESSION_POOL)
+    end
+end
+
+function get_gp_session()::GPSession
+    """Get an available GP session from the pool (blocks if all busy)"""
+    while true
+        lock(GP_POOL_LOCK) do
+            for session in GP_SESSION_POOL
+                # Try to acquire this session's lock without blocking
+                if trylock(session.lock)
+                    return session
+                end
+            end
+        end
+        # All sessions busy, wait a bit
+        sleep(0.001)
+    end
+end
+
+function release_gp_session(session::GPSession)
+    """Release a GP session back to the pool"""
+    unlock(session.lock)
+end
+
+function gp_eval(command::String; use_print::Bool=true)::String
+    """
+    Evaluate a command using a session from the pool
+    Automatically acquires and releases a session
+    """
+    # Ensure pool is initialized
+    if isempty(GP_SESSION_POOL)
+        lock(GP_POOL_LOCK) do
+            if isempty(GP_SESSION_POOL)
+                init_gp_session_pool()
+            end
+        end
+    end
+
+    # Get a session from the pool
+    session = get_gp_session()
+
+    try
+        # Send command
+        if use_print
+            println(session.stdin, "print($command)")
+        else
+            println(session.stdin, command)
+        end
+        flush(session.stdin)
+
+        # Read result
+        result = readline(session.stdout)
+
+        return strip(result)
+    catch e
+        println("Warning: GP session $(session.id) error: ", e)
+        return "ERROR"
+    finally
+        # Always release the session back to the pool
+        release_gp_session(session)
+    end
+end
+
 # Helper functions for rational arithmetic
 function parse_rational(s::String)::Tuple{Int64, Int64}
     """Parse a rational string 'num/den' into (numerator, denominator)"""
@@ -163,56 +371,71 @@ function eval_discriminant_derivative(num::Int64, den::Int64)::BigFloat
     return eval_poly_rational(D_PRIME_COEFFS, num, den)
 end
 
+function eval_a4(num::Int64, den::Int64)::Rational{BigInt}
+    """
+    Evaluate a4(t) at t = num/den
+    Returns a rational number: a4(t) = A4_NUMER(t) / A4_DENOM
+    """
+    numer_val = eval_poly_rational(A4_NUMER_COEFFS, num, den)
+    # Convert BigFloat to rational
+    # numer_val is already A4_NUMER(t), so a4(t) = numer_val / A4_DENOM
+    return Rational{BigInt}(BigInt(round(numer_val)), A4_DENOM)
+end
+
+function eval_a6(num::Int64, den::Int64)::Rational{BigInt}
+    """
+    Evaluate a6(t) at t = num/den
+    Returns a rational number: a6(t) = A6_NUMER(t) / A6_DENOM
+    """
+    numer_val = eval_poly_rational(A6_NUMER_COEFFS, num, den)
+    # Convert BigFloat to rational
+    return Rational{BigInt}(BigInt(round(numer_val)), A6_DENOM)
+end
+
 function compute_conductor_mestre(num::Int64, den::Int64)::BigInt
     """
-    Compute the conductor of Mestre's curve at t = num/den using GP/Pari
+    Compute the conductor of Mestre's curve at t = num/den using persistent GP/Pari session
 
-    The Weierstrass coefficients a4 and a6 are also polynomials in t,
-    so we need to evaluate them at the rational value.
-
-    For now, we'll use the generate_rank_12.py approach via Sage/Pari.
+    Mestre's curve in Weierstrass form: y^2 = x^3 + a4(t)*x + a6(t)
+    where a4(t) and a6(t) are rational polynomials in t
     """
-    # Create GP/Pari script
-    gp_script = """
-    t = $num/$den;
+    # Evaluate a4(t) and a6(t) at the given rational
+    a4_val = eval_a4(num, den)
+    a6_val = eval_a6(num, den)
 
-    \\\\ Mestre's polynomial coefficients
-    A1 = -26940*t^2 + 51220*t - 26940;
-    A2 = -1320*t^3 + 17280*t^2 + 17280*t - 1320;
-    A3 = -18876*t^4 - 153828*t^3 + 301221*t^2 - 153828*t - 18776;
-    A4 = -1489600*t^3 + 1489600*t^2 + 1489600*t - 1489600;
-    A5 = 5816880*t^4 + 8043880*t^3 - 27463500*t^2 + 8043880*t + 5816880;
-    A6 = 3416160*t^5 - 24166320*t^4 + 19202040*t^3 + 19202040*t^2 - 24166320*t + 3416160;
-    A7 = -745360*t^6 - 15468024*t^5 + 18853764*t^4 - 138394*t^3 + 18853764*t^2 - 15468024*t - 745360;
-
-    \\\\ Compute via Sage's approach would go here
-    \\\\ For now, use a placeholder
-    print("MESTRE_NOT_IMPLEMENTED");
-    quit();
-    """
-
-    temp_file = tempname() * ".gp"
-    open(temp_file, "w") do f
-        write(f, gp_script)
-    end
+    # Extract numerator and denominator
+    a4_num = numerator(a4_val)
+    a4_den = denominator(a4_val)
+    a6_num = numerator(a6_val)
+    a6_den = denominator(a6_val)
 
     try
-        result = read(pipeline(`gp -q $temp_file`), String)
-        rm(temp_file)
-        result = strip(result)
+        # Use persistent GP session for efficiency
+        # Send the computation as a block that returns the conductor
+        # Build the command to compute and print the result
+        command = """a4=$a4_num/$a4_den; a6=$a6_num/$a6_den; E=ellinit([0,0,0,a4,a6]); if(E==0, print("INVALID"), print(ellglobalred(E)[1]))"""
+        result = gp_eval(command, use_print=false)
 
-        if result == "MESTRE_NOT_IMPLEMENTED"
-            # Fall back to simple curve for now
-            # y^2 = x^3 + t*x + 1
-            return compute_conductor_simple(num, den)
+        # Check for various error conditions
+        if result == "INVALID" ||
+           result == "ERROR" ||
+           contains(result, "error") ||
+           contains(result, "overflow") ||
+           contains(result, "***") ||
+           isempty(result)
+            return BigInt(typemax(Int64))
         end
 
-        return parse(BigInt, result)
+        # Try to parse as BigInt
+        conductor = parse(BigInt, result)
+
+        # Sanity check: conductor should be positive
+        if conductor <= 0
+            return BigInt(typemax(Int64))
+        end
+
+        return conductor
     catch e
-        println("Warning: GP/Pari failed for Mestre t=$num/$den: ", e)
-        if isfile(temp_file)
-            rm(temp_file)
-        end
         return BigInt(typemax(Int64))
     end
 end
@@ -343,3 +566,10 @@ function empty_starting_point()::OBJ_TYPE
     """Initial starting point: t = 1/1"""
     return "1/1"
 end
+
+# Initialize GP/PARI session pool when module loads
+println("Starting GP/PARI session pool...")
+init_gp_session_pool()
+
+# Register cleanup handler to stop all GP sessions on exit
+atexit(stop_gp_session_pool)
