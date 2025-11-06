@@ -194,8 +194,8 @@ end
 
 function reward_calc(obj::OBJ_TYPE)::REWARD_TYPE
     """
-    Compute the reward = -conductor(t)
-    (Negative because we want to minimize conductor, but the framework maximizes reward)
+    Compute the reward = -log(conductor(t))
+    (Negative because we want to minimize log(conductor), but the framework maximizes reward)
     """
     try
         num, den = parse_rational(obj)
@@ -208,8 +208,12 @@ function reward_calc(obj::OBJ_TYPE)::REWARD_TYPE
 
         conductor = compute_conductor(num, den)
 
-        # Return negative conductor (we want to minimize it)
-        return Float32(-conductor)
+        if conductor <= 0 || conductor == typemax(Int64)
+            return Float32(-1e9)  # Invalid conductor
+        end
+
+        # Return negative log of conductor (we want to minimize it)
+        return Float32(-log(Float64(conductor)))
     catch e
         println("Error computing reward for $obj: ", e)
         return Float32(-1e9)

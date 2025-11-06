@@ -11,9 +11,10 @@ using Dates
 
 # Choose the problem to work on here!
 
-#include("problem_triangle_free.jl")  
-include("problem_4_cycle_free.jl")
+#include("problem_triangle_free.jl")
+#include("problem_4_cycle_free.jl")
 #include("problem_permanent_avoid_123.jl")
+include("problem_elliptic_simple.jl")
 
 
 #########################################################################################
@@ -39,6 +40,10 @@ end
 
 function write_output_to_file(db)
     rewards = [ rew for rew in keys(db.rewards) ]
+    if isempty(rewards)
+        println("WARNING: No rewards found in database. Skipping output file.")
+        return
+    end
     sort!(rewards, rev=true)
     base_name = "search_output"
     extension = "txt"
@@ -64,6 +69,10 @@ end
 
 function write_plot_to_file(db)
     rewards = [ rew for rew in keys(db.rewards) ]
+    if isempty(rewards)
+        println("WARNING: No rewards found in database. Skipping plots.")
+        return
+    end
     sort!(rewards, rev=true)
     reward_counts = [ length(db.rewards[rew]) for rew in rewards ]
 
@@ -198,8 +207,12 @@ function print_db(db)
     rewards = [ rew for rew in keys(db.rewards) ]
     sort!(rewards, rev=true)
     db_size = 0
-    for r in rewards 
+    for r in rewards
         db_size += length(db.rewards[r])
+    end
+    println("Database: $db_size objects, $(length(rewards)) unique rewards")
+    if !isempty(rewards)
+        println("  Best reward: $(rewards[1]), Worst reward: $(rewards[end])")
     end
     # shrink database if necessary
     if db_size > 2*target_db_size
@@ -207,31 +220,45 @@ function print_db(db)
         shrink!(db)
         rewards = [ rew for rew in keys(db.rewards) ]
         sort!(rewards, rev=true)
-    end  
+    end
 end
 
 
 function local_search!(db, lines, start_ind, nb=nb_local_searches)
-    local_search_results_threads = []
-    for j=1:nthreads()
-        push!(local_search_results_threads, [[],[]])
+    # Pre-allocate results storage for each thread
+    # Allocate extra slots to handle threading quirks
+    nt = max(nthreads(), Threads.maxthreadid())
+    local_search_results_threads = Vector{Tuple{Vector{OBJ_TYPE}, Vector{REWARD_TYPE}}}(undef, nt)
+    for j=1:nt
+        local_search_results_threads[j] = (Vector{OBJ_TYPE}(), Vector{REWARD_TYPE}())
     end
     # prepare local search pool
     count = 0
     pool = OBJ_TYPE[]
     append!(pool, lines[start_ind:min(start_ind + nb - 1,length(lines))])
+    println("  Local search pool size: $(length(pool))")
     # we perform the local searches
     @threads for obj in pool
+        tid = min(threadid(), nt)  # Clamp to valid range
         list_obj, list_rew = local_search_on_object(db, obj)
-        append!(local_search_results_threads[threadid()][1], list_obj)
-        append!(local_search_results_threads[threadid()][2], list_rew)
+        if !isempty(list_obj)
+            println("  Found $(length(list_obj)) new objects from $obj")
+        end
+        append!(local_search_results_threads[tid][1], list_obj)
+        append!(local_search_results_threads[tid][2], list_rew)
     end
     # we update the dictionaries
-    for j=1:nthreads()
+    total_new = 0
+    for j=1:nt  # Use nt, not nthreads()!
         # we consider all new graphs found by j-th thread
         # Remark: a tiny number of graphs could be found by multiple threads, this is not a problem, the function add! will add each graph only once
-        add_db!(db, local_search_results_threads[j][1], local_search_results_threads[j][2])
+        if !isempty(local_search_results_threads[j][1])
+            println("  Thread $j has $(length(local_search_results_threads[j][1])) objects to add")
+        end
+        new_rewards = add_db!(db, local_search_results_threads[j][1], local_search_results_threads[j][2])
+        total_new += length(new_rewards)
     end
+    println("  Added $total_new new objects to database")
     return nothing
 end
 
