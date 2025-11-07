@@ -56,12 +56,21 @@ function write_output_to_file(db)
         while lines_written < final_database_size && curr_rew_index <= length(rewards)
             curr_rew = rewards[curr_rew_index]
             for obj in db.rewards[curr_rew][1:min(final_database_size - lines_written, length(db.rewards[curr_rew]))]
-                write(file, obj * "\n")
+                # Compute ellap features for this rational
+                num, den = parse_rational(obj)
+                ellap_values = compute_ellap_batch(num, den)
+
+                # Write: rational,a_2,a_3,...,a_97
+                write(file, obj)
+                for ap in ellap_values
+                    write(file, ",$ap")
+                end
+                write(file, "\n")
             end
             lines_written += length(db.rewards[curr_rew])
             curr_rew_index += 1
         end
-        
+
     end
     println("Data written to $(filename)")
     println("An example of an object with maximum reward (" * string(rewards[1]) * "):")

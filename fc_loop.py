@@ -147,9 +147,17 @@ def decode():
         #print(token_line)
         token_ids = [int(token[1:]) for token in token_line.split(',')]
         # Decode the token ids to text
-        
+
         return tokenizer.decode(token_ids).replace(" ","")
 
+    def extract_rational(decoded_line):
+        """
+        Extract rational from decoded line (format: num/den,a_2,a_3,...)
+        Returns just the rational part before first comma
+        """
+        if ',' in decoded_line:
+            return decoded_line.split(',')[0]
+        return decoded_line
 
     # Process the input file
     input_file = args.dump_path+"/out.txt"
@@ -160,11 +168,21 @@ def decode():
         # Decode each line and collect the results
         decoded_text = [decode_tokens(line.strip()) for line in tokenized_lines if len(line) > 1]
 
-        # Write the decoded text to the output file
+        # Extract rationals and filter valid ones
+        rationals = []
+        for line in decoded_text:
+            rational = extract_rational(line)
+            # Basic validation: check it looks like a rational
+            if rational and ('/' in rational or rational.lstrip('-').isdigit()):
+                rationals.append(rational)
+
+        logger.info(f"Decoded {len(decoded_text)} sequences, extracted {len(rationals)} valid rationals")
+
+        # Write the decoded rationals to the output file (Julia will check discriminant)
         output_file = args.dump_path+"/transformer-output-decoded.txt"
         with open(output_file, 'w') as file:
-            for line in decoded_text:
-                file.write(line + '\n')
+            for rational in rationals:
+                file.write(rational + '\n')
 
         logger.info(f"Decoding complete. Check the output in {output_file}")
     else:
@@ -277,7 +295,7 @@ if __name__ == '__main__':
     if initial_gen == 0:
         os.environ["JULIA_NUM_THREADS"] = str(args.nb_threads)  # Set the environment variable
         logger.info(f"JULIA_NUM_THREADS is set to {os.environ['JULIA_NUM_THREADS']}")
-        subprocess.run(["julia","search_fc.jl", args.dump_path, str(args.nb_local_searches), str(args.num_initial_empty_objects), str(args.final_database_size), str(args.target_db_size), '-i', 'elliptic_input.txt'])
+        subprocess.run(["julia","search_fc.jl", args.dump_path, str(args.nb_local_searches), str(args.num_initial_empty_objects), str(args.final_database_size), str(args.target_db_size), '-i', 'elliptic_input_with_fourier_coefficients.txt'])
         tokenize(f"{args.dump_path}/search_output_1.txt", args.n_tokens)
         initial_gen = 1
     

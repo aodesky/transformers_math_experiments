@@ -644,6 +644,69 @@ function reward_calc(obj::OBJ_TYPE)::REWARD_TYPE
     end
 end
 
+const SMALL_PRIMES = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47,
+                      53, 59, 61, 67, 71, 73, 79, 83, 89, 97]
+
+function compute_ellap_batch(num::Int64, den::Int64)::Vector{Int}
+    """
+    Compute ellap(E(t), p) for all primes p < 100
+    Returns vector of 25 integers: [a_2, a_3, a_5, ..., a_97]
+    Returns zeros on error
+    """
+
+    # Evaluate a4(t) and a6(t)
+    a4_val = eval_a4(num, den)
+    a6_val = eval_a6(num, den)
+
+    a4_num = numerator(a4_val)
+    a4_den = denominator(a4_val)
+    a6_num = numerator(a6_val)
+    a6_den = denominator(a6_val)
+
+    # Create GP script to compute all ellap values
+    # Build the script dynamically with each ellap call
+    ellap_calls = join(["ellap(E,$p)" for p in SMALL_PRIMES], ",")
+    gp_script = """
+a4=$a4_num/$a4_den;
+a6=$a6_num/$a6_den;
+E=ellinit([0,0,0,a4,a6]);
+print([$ellap_calls]);
+quit();
+"""
+
+    temp_file = tempname() * ".gp"
+    open(temp_file, "w") do f
+        write(f, gp_script)
+    end
+
+    try
+        result = read(pipeline(`gp -q -s 100000000 $temp_file`, stderr=devnull), String)
+        rm(temp_file)
+        result = strip(result)
+
+        if result == "INVALID" || isempty(result)
+            return zeros(Int, 25)
+        end
+
+        # Parse GP vector output format: [a, b, c, ...]
+        # Remove brackets and split on commas
+        result = replace(result, r"[\[\]]" => "")  # Remove [ and ]
+        ap_values = [parse(Int, strip(s)) for s in split(result, ",")]
+
+        # Verify we got exactly 25 values
+        if length(ap_values) != 25
+            return zeros(Int, 25)
+        end
+
+        return ap_values
+    catch e
+        if isfile(temp_file)
+            rm(temp_file)
+        end
+        return zeros(Int, 25)
+    end
+end
+
 function empty_starting_point()::OBJ_TYPE
     """Initial starting point: t = 1/1"""
     return "1/1"
