@@ -141,6 +141,10 @@ const A6_NUMER_COEFFS = BigInt[
 ]
 const A6_DENOM = BigInt(27)
 
+# Configuration: Enable rank checking (WARNING: VERY SLOW!)
+const CHECK_RANK_CONSTRAINT = false  # Set to true to require rank >= 12
+const MIN_RANK_REQUIRED = 12
+
 # Persistent GP/PARI process for efficient conductor computations
 mutable struct GPSession
     process::Union{Base.Process, Nothing}
@@ -392,13 +396,72 @@ function eval_a6(num::Int64, den::Int64)::Rational{BigInt}
     return Rational{BigInt}(BigInt(round(numer_val)), A6_DENOM)
 end
 
-function compute_conductor_mestre(num::Int64, den::Int64)::BigInt
+function check_rank_mestre(num::Int64, den::Int64, min_rank::Int=12)::Bool
     """
-    Compute the conductor of Mestre's curve at t = num/den using persistent GP/Pari session
+    Check if Mestre's curve at t has rank >= min_rank using GP/PARI
+    Returns true if rank lower bound >= min_rank, false otherwise
+
+    WARNING: This is VERY expensive (can take seconds per curve)
+    """
+    # Evaluate a4(t) and a6(t)
+    a4_val = eval_a4(num, den)
+    a6_val = eval_a6(num, den)
+
+    a4_num = numerator(a4_val)
+    a4_den = denominator(a4_val)
+    a6_num = numerator(a6_val)
+    a6_den = denominator(a6_val)
+
+    # Create GP script to compute rank
+    gp_script = """
+    a4 = $a4_num/$a4_den;
+    a6 = $a6_num/$a6_den;
+    E = ellinit([0, 0, 0, a4, a6]);
+    if (E == 0, print("INVALID"), r = ellrank(E); print(r[1]));
+    quit();
+    """
+
+    temp_file = tempname() * ".gp"
+    open(temp_file, "w") do f
+        write(f, gp_script)
+    end
+
+    try
+        # Run GP with timeout (30 seconds max)
+        result = read(pipeline(`timeout 30 gp -q -s 200000000 $temp_file`, stderr=devnull), String)
+        rm(temp_file)
+        result = strip(result)
+
+        if result == "INVALID" || isempty(result)
+            return false
+        end
+
+        # Parse the rank lower bound
+        rank_lower = parse(Int, result)
+        return rank_lower >= min_rank
+    catch e
+        if isfile(temp_file)
+            rm(temp_file)
+        end
+        return false
+    end
+end
+
+function compute_conductor_mestre(num::Int64, den::Int64; check_rank::Bool=false, min_rank::Int=12)::BigInt
+    """
+    Compute the conductor of Mestre's curve at t = num/den using GP/Pari
 
     Mestre's curve in Weierstrass form: y^2 = x^3 + a4(t)*x + a6(t)
     where a4(t) and a6(t) are rational polynomials in t
+
+    If check_rank=true, validates that rank >= min_rank before computing conductor
+    WARNING: Rank checking is VERY slow!
     """
+    # Optional: Check rank constraint first
+    if check_rank && !check_rank_mestre(num, den, min_rank)
+        return BigInt(typemax(Int64))  # Invalid: rank too low
+    end
+
     # Evaluate a4(t) and a6(t) at the given rational
     a4_val = eval_a4(num, den)
     a6_val = eval_a6(num, den)
@@ -409,16 +472,28 @@ function compute_conductor_mestre(num::Int64, den::Int64)::BigInt
     a6_num = numerator(a6_val)
     a6_den = denominator(a6_val)
 
+    # Create GP/Pari script using temp file (more reliable than pipes)
+    gp_script = """
+    a4 = $a4_num/$a4_den;
+    a6 = $a6_num/$a6_den;
+    E = ellinit([0, 0, 0, a4, a6]);
+    if (E == 0, print("INVALID"), print(ellglobalred(E)[1]));
+    quit();
+    """
+
+    temp_file = tempname() * ".gp"
+    open(temp_file, "w") do f
+        write(f, gp_script)
+    end
+
     try
-        # Use persistent GP session for efficiency
-        # Send the computation as a block that returns the conductor
-        # Build the command to compute and print the result
-        command = """a4=$a4_num/$a4_den; a6=$a6_num/$a6_den; E=ellinit([0,0,0,a4,a6]); if(E==0, print("INVALID"), print(ellglobalred(E)[1]))"""
-        result = gp_eval(command, use_print=false)
+        # Run GP with parallelization
+        result = read(pipeline(`gp -q -s 200000000 $temp_file`, stderr=devnull), String)
+        rm(temp_file)
+        result = strip(result)
 
         # Check for various error conditions
         if result == "INVALID" ||
-           result == "ERROR" ||
            contains(result, "error") ||
            contains(result, "overflow") ||
            contains(result, "***") ||
@@ -436,6 +511,9 @@ function compute_conductor_mestre(num::Int64, den::Int64)::BigInt
 
         return conductor
     catch e
+        if isfile(temp_file)
+            rm(temp_file)
+        end
         return BigInt(typemax(Int64))
     end
 end
@@ -538,6 +616,9 @@ end
 function reward_calc(obj::OBJ_TYPE)::REWARD_TYPE
     """
     Compute the reward = -log(conductor(t))
+
+    If CHECK_RANK_CONSTRAINT is true, only accepts curves with rank >= MIN_RANK_REQUIRED
+    WARNING: Rank checking makes this EXTREMELY slow!
     """
     try
         num, den = parse_rational(obj)
@@ -548,7 +629,8 @@ function reward_calc(obj::OBJ_TYPE)::REWARD_TYPE
             return Float32(-1e9)
         end
 
-        conductor = compute_conductor_mestre(num, den)
+        # Compute conductor (with optional rank check)
+        conductor = compute_conductor_mestre(num, den, check_rank=CHECK_RANK_CONSTRAINT, min_rank=MIN_RANK_REQUIRED)
 
         if conductor <= 0 || conductor >= BigInt(10)^100
             return Float32(-1e9)
@@ -567,9 +649,24 @@ function empty_starting_point()::OBJ_TYPE
     return "1/1"
 end
 
-# Initialize GP/PARI session pool when module loads
-println("Starting GP/PARI session pool...")
-init_gp_session_pool()
+# Note: Persistent GP sessions are disabled for now due to deadlock issues
+# Using temp files instead - still fast with Julia multi-threading
+# To re-enable, uncomment below:
+# println("Starting GP/PARI session pool...")
+# init_gp_session_pool()
+# atexit(stop_gp_session_pool)
 
-# Register cleanup handler to stop all GP sessions on exit
-atexit(stop_gp_session_pool)
+# Print configuration
+println()
+println("="^80)
+println("Mestre Rank ≥12 Family - Conductor Minimization")
+println("="^80)
+if CHECK_RANK_CONSTRAINT
+    println("⚠️  RANK CHECKING ENABLED: Only accepting curves with rank ≥ $MIN_RANK_REQUIRED")
+    println("⚠️  WARNING: This will be EXTREMELY SLOW (~10-30s per curve)")
+else
+    println("Rank checking: DISABLED (optimizing conductor only)")
+    println("To enable rank checking, set CHECK_RANK_CONSTRAINT = true in problem_mestre_rank12.jl")
+end
+println("="^80)
+println()
