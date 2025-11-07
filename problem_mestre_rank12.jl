@@ -553,7 +553,8 @@ end
 
 function greedy_search_from_startpoint(db, obj::OBJ_TYPE)::Vector{OBJ_TYPE}
     """
-    Perform one step of gradient descent on D(t)
+    Perform gradient descent on D(t) with multiple step sizes for diversity
+    Returns multiple candidates to explore different parts of the search space
     """
     local num, den
     try
@@ -574,43 +575,73 @@ function greedy_search_from_startpoint(db, obj::OBJ_TYPE)::Vector{OBJ_TYPE}
     # Evaluate derivative
     disc_deriv = eval_discriminant_derivative(num, den)
 
-    # Learning rate: 1/50
-    learning_rate = 1/50
+    # Try multiple learning rates for diversity
+    learning_rates = [1/20, 1/50, 1/100, 1/200]
 
-    # Gradient descent step (work in Float64 then convert back to rational)
+    # Also try small random perturbations
+    results = Vector{OBJ_TYPE}()
+
     t_current = Float64(num) / Float64(den)
 
-    if disc > 0
-        t_new_float = t_current - learning_rate * Float64(disc_deriv)
-    else
-        t_new_float = t_current + learning_rate * Float64(disc_deriv)
-    end
-
-    # Convert float back to rational with reasonable denominator
-    # Use rationalize with tolerance
-    t_new_rational = rationalize(BigInt, t_new_float, tol=1e-10)
-    new_num_big = numerator(t_new_rational)
-    new_den_big = denominator(t_new_rational)
-
-    # Try to fit into Int64 range
-    try
-        new_num = Int64(new_num_big)
-        new_den = Int64(new_den_big)
-        new_num, new_den = simplify_rational(new_num, new_den)
-
-        # Verify non-zero discriminant
-        new_disc = eval_discriminant(new_num, new_den)
-        if abs(new_disc) < 1e-10
-            new_num += 1
-            new_num, new_den = simplify_rational(new_num, new_den)
+    for learning_rate in learning_rates
+        # Gradient descent step (work in Float64 then convert back to rational)
+        if disc > 0
+            t_new_float = t_current - learning_rate * Float64(disc_deriv)
+        else
+            t_new_float = t_current + learning_rate * Float64(disc_deriv)
         end
 
-        return [rational_to_string(new_num, new_den)]
-    catch
-        # Number too large, return original with small perturbation
-        perturbed_num, perturbed_den = simplify_rational(num + 1, den)
-        return [rational_to_string(perturbed_num, perturbed_den)]
+        # Convert float back to rational with reasonable denominator
+        # Use rationalize with tolerance
+        t_new_rational = rationalize(BigInt, t_new_float, tol=1e-10)
+        new_num_big = numerator(t_new_rational)
+        new_den_big = denominator(t_new_rational)
+
+        # Try to fit into Int64 range
+        try
+            new_num = Int64(new_num_big)
+            new_den = Int64(new_den_big)
+            new_num, new_den = simplify_rational(new_num, new_den)
+
+            # Verify non-zero discriminant
+            new_disc = eval_discriminant(new_num, new_den)
+            if abs(new_disc) < 1e-10
+                new_num += 1
+                new_num, new_den = simplify_rational(new_num, new_den)
+            end
+
+            push!(results, rational_to_string(new_num, new_den))
+        catch
+            # Number too large, skip this learning rate
+        end
     end
+
+    # Add random perturbations for additional diversity
+    for _ in 1:2
+        perturb_num = rand(-3:3)
+        perturb_den = rand(-2:2)
+        new_den_val = den + perturb_den
+
+        # Skip if denominator would be zero or negative
+        if new_den_val <= 0
+            continue
+        end
+
+        perturbed_num, perturbed_den = simplify_rational(num + perturb_num, new_den_val)
+
+        # Check discriminant
+        new_disc = eval_discriminant(perturbed_num, perturbed_den)
+        if abs(new_disc) > 1e-10
+            push!(results, rational_to_string(perturbed_num, perturbed_den))
+        end
+    end
+
+    # Return empty starting point if no valid results
+    if isempty(results)
+        return [rational_to_string(num, den)]
+    end
+
+    return results
 end
 
 function reward_calc(obj::OBJ_TYPE)::REWARD_TYPE

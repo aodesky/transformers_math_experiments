@@ -172,7 +172,10 @@ function initial_lines()
             for line in eachline(file)
                 line = strip(line)  # Remove whitespace
                 if !isempty(line)
-                    push!(lines, line)  # Add each non-empty line
+                    # Extract just the rational part (before the first comma)
+                    # Format is: "rational,ap1,ap2,ap3,..."
+                    rational_part = split(line, ',')[1]
+                    push!(lines, rational_part)  # Add just the rational
                 end
             end
         end
@@ -265,6 +268,7 @@ function local_search!(db, lines, start_ind, nb=nb_local_searches)
         # Remark: a tiny number of graphs could be found by multiple threads, this is not a problem, the function add! will add each graph only once
         if !isempty(local_search_results_threads[j][1])
             println("  Thread $j has $(length(local_search_results_threads[j][1])) objects to add")
+            println("  [DEBUG] Thread $j first object: $(first(local_search_results_threads[j][1][1], min(50, length(local_search_results_threads[j][1][1]))))...")
         end
         new_rewards = add_db!(db, local_search_results_threads[j][1], local_search_results_threads[j][2])
         total_new += length(new_rewards)
@@ -284,13 +288,15 @@ end
 function add_db!(db, list_obj, list_rew = nothing)
     # add all objects in list_obj to the database (if not already there)
     # computes the rewards if not provided
-    # returns the number of new objects added to the database    
-    rewards_new_objects = [] 
+    # returns the number of new objects added to the database
+    rewards_new_objects = []
     if list_rew != nothing
         for i in 1:length(list_obj)
             obj = list_obj[i]
-            if !haskey(db.objects, obj)       
-                rew = list_rew[i]         
+            println("  [DEBUG] Checking object: $(first(obj, min(50, length(obj))))...")
+            if !haskey(db.objects, obj)
+                println("  [DEBUG] Object NOT in db, adding it")
+                rew = list_rew[i]
                 push!(rewards_new_objects, rew)
                 #db.objects[obj] = rew
                 set!(db.objects, obj, rew)
@@ -300,6 +306,8 @@ function add_db!(db, list_obj, list_rew = nothing)
                 else
                     push!(db.rewards[rew], obj)
                 end
+            else
+                println("  [DEBUG] Object already in db, skipping (reward=$(db.objects[obj]))")
             end
         end
     else 
