@@ -172,10 +172,18 @@ function initial_lines()
             for line in eachline(file)
                 line = strip(line)  # Remove whitespace
                 if !isempty(line)
-                    # Extract just the rational part (before the first comma)
-                    # Format is: "rational,ap1,ap2,ap3,..."
-                    rational_part = split(line, ',')[1]
-                    push!(lines, rational_part)  # Add just the rational
+                    # For number field problem: entire line is the object
+                    # For elliptic problem: first field before comma is the object
+                    # Detect based on number of commas (NF has 19, elliptic has ~25)
+                    num_commas = count(',', line)
+                    if num_commas >= 19 && num_commas <= 20
+                        # Number field format: entire line is object
+                        push!(lines, line)
+                    else
+                        # Elliptic format: extract just the rational part
+                        rational_part = split(line, ',')[1]
+                        push!(lines, rational_part)
+                    end
                 end
             end
         end

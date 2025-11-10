@@ -52,7 +52,7 @@ def get_parser():
     parser.add_argument('--learning-rate', '-l', type=float, default=5e-4, help="learning rate")
     parser.add_argument('--weight-decay', '-w', type=float, default=0.01, help="weight decay")
     # evaluation against known "good sequences"
-    parser.add_argument('--max-output-length', type=int, default=160, help="maximum output length")
+    parser.add_argument('--max-output-length', type=int, default=250, help="maximum output length")
     parser.add_argument('--gen_batch_size', type=int, default=1000, help="generation batch size")
     parser.add_argument('--n_tokens', type=int, default=100, help="nr tokens in tokenizer")
     parser.add_argument('--temperature', type=float, default=1.0, help="temperature")
@@ -308,7 +308,7 @@ if __name__ == '__main__':
     if initial_gen == 0:
         os.environ["JULIA_NUM_THREADS"] = str(args.nb_threads)  # Set the environment variable
         logger.info(f"JULIA_NUM_THREADS is set to {os.environ['JULIA_NUM_THREADS']}")
-        subprocess.run(["julia","search_fc.jl", args.dump_path, str(args.nb_local_searches), str(args.num_initial_empty_objects), str(args.final_database_size), str(args.target_db_size), '-i', 'elliptic_input_with_fourier_coefficients.txt'])
+        subprocess.run(["julia","search_fc.jl", args.dump_path, str(args.nb_local_searches), str(args.num_initial_empty_objects), str(args.final_database_size), str(args.target_db_size), '-i', 'nf_matrix_input.txt'])
         tokenize(f"{args.dump_path}/search_output_1.txt", args.n_tokens)
         initial_gen = 1
         # Mark generation 0 as completed (initial dataset created)
