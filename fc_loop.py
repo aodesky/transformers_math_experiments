@@ -288,17 +288,33 @@ if __name__ == '__main__':
     # os.makedirs(args.work_dir, exist_ok=True)
 
     # init datasets
-    for i in range(1,args.max_epochs):
-        if not os.path.isfile(f"{args.dump_path}/search_output_{i}-tokenized.txt"):
-            break
-    initial_gen = i-1
+    # Check for last completed generation marker
+    generation_marker_path = os.path.join(args.dump_path, "last_completed_generation.txt")
+    initial_gen = 0
+
+    if os.path.isfile(generation_marker_path):
+        with open(generation_marker_path, 'r') as f:
+            last_completed = int(f.read().strip())
+        # Start from the next generation after the last completed one
+        initial_gen = last_completed + 1
+        logger.info(f"Found generation marker: last completed generation was {last_completed}")
+    else:
+        # Fallback to old detection method if no marker exists
+        for i in range(1,args.max_epochs):
+            if not os.path.isfile(f"{args.dump_path}/search_output_{i}-tokenized.txt"):
+                break
+        initial_gen = i-1
+
     if initial_gen == 0:
         os.environ["JULIA_NUM_THREADS"] = str(args.nb_threads)  # Set the environment variable
         logger.info(f"JULIA_NUM_THREADS is set to {os.environ['JULIA_NUM_THREADS']}")
         subprocess.run(["julia","search_fc.jl", args.dump_path, str(args.nb_local_searches), str(args.num_initial_empty_objects), str(args.final_database_size), str(args.target_db_size), '-i', 'elliptic_input_with_fourier_coefficients.txt'])
         tokenize(f"{args.dump_path}/search_output_1.txt", args.n_tokens)
         initial_gen = 1
-    
+        # Mark generation 0 as completed (initial dataset created)
+        with open(generation_marker_path, 'w') as f:
+            f.write('0')
+
     logger.info(f"initializing at generation: {initial_gen}")
     input_file = args.dump_path + f"/search_output_{initial_gen}-tokenized.txt"
     train_dataset, test_dataset = create_datasets(input_file)
@@ -453,5 +469,10 @@ if __name__ == '__main__':
         tokenize(f"{args.dump_path}/search_output_{generation+1}.txt", args.n_tokens)
         input_file = args.dump_path + f"/search_output_{generation+1}-tokenized.txt"
         train_dataset, test_dataset = create_datasets(input_file)
+
+        # Mark this generation as completed
+        with open(generation_marker_path, 'w') as f:
+            f.write(str(generation))
+        logger.info(f"Generation {generation} completed successfully")
         
 
