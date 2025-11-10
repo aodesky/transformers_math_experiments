@@ -97,17 +97,217 @@ const D_PRIME_COEFFS = BigInt[
     116724890597580319681815300992222752267149653311488000000
 ]
 
-# Mestre's plane cubic coefficients from the paper
-# The curve is: y^3 + A1*x^2*y + A2*x*y*z + A3*y*z^2 + A4*x^3 + A5*x^2*z + A6*x*z^2 + A7*z^3 = 0
-# These polynomial coefficients are used by the Sage helper script
+# Weierstrass form coefficients: y^2 = x^3 + a4(t)*x + a6(t)
+# These are rational polynomials: a4(t) = A4_NUMER(t) / A4_DENOM
+# Computed from Mestre's plane cubic using Sage
 
-const MESTRE_A1 = [-26940, 51220, -26940]
-const MESTRE_A2 = [-1320, 17280, 17280, -1320]
-const MESTRE_A3 = [-18876, -153828, 301221, -153828, -18776]
-const MESTRE_A4 = [-1489600, 1489600, 1489600, -1489600]
-const MESTRE_A5 = [5816880, 8043880, -27463500, 8043880, 5816880]
-const MESTRE_A6 = [3416160, -24166320, 19202040, 19202040, -24166320, 3416160]
-const MESTRE_A7 = [-745360, -15468024, 18853764, -138394, 18853764, -15468024, -745360]
+const A4_NUMER_COEFFS = BigInt[
+    -5013558100494028800,
+    -31223157822576691200,
+    36850819289195923200,
+    375767910105823324800,
+    -909015201933727021200,
+    627735360031439126400,
+    -190333976336927546400,
+    627968231066603606400,
+    -909272532073107781200,
+    376003880650827484800,
+    36714196278367683200,
+    -31220058312737011200,
+    -4996097133777388800,
+]
+const A4_DENOM = BigInt(3)
+
+const A6_NUMER_COEFFS = BigInt[
+    22668186571459155780894720000,
+    203387292236079580258713600000,
+    134498583657781883343636480000,
+    -3633649404971677060116049920000,
+    -1672385445663582687556688640000,
+    40212991310412954466845627840000,
+    -66623930317405025667601698960000,
+    -46203257144166699494281956480000,
+    292205940790151219565054099600000,
+    -429332179402122264136129783680000,
+    292343874284328539800854200400000,
+    -46390902011588484059487857280000,
+    -66508882717375442192538796560000,
+    40200621730127022808322677440000,
+    -1693906103722165170601285440000,
+    -3626101530671701430935032320000,
+    135762415484271030280730880000,
+    202896505624301923064140800000,
+    22566782308794025025387520000,
+]
+const A6_DENOM = BigInt(27)
+
+# Configuration: Enable rank checking (WARNING: VERY SLOW!)
+const CHECK_RANK_CONSTRAINT = false  # Set to true to require rank >= 12
+const MIN_RANK_REQUIRED = 12
+
+# Persistent GP/PARI process for efficient conductor computations
+mutable struct GPSession
+    process::Union{Base.Process, Nothing}
+    stdin::Union{IO, Nothing}
+    stdout::Union{IO, Nothing}
+    lock::ReentrantLock
+    id::Int
+end
+
+# Pool of GP sessions for parallelization
+const GP_SESSION_POOL = GPSession[]
+const GP_POOL_LOCK = ReentrantLock()
+
+function start_gp_session_single(session_id::Int, threads_per_session::Int)::GPSession
+    """Start a single GP/PARI session with specified number of threads"""
+    # Start GP with large stack, quiet mode, and suppress prompts
+    # Reduce stack to 200MB for faster startup (still plenty for conductors)
+    gp_cmd = `gp -q -s 200000000 --emacs`
+    process = open(gp_cmd, "r+")
+
+    # Configure GP/PARI threads (fire and forget, don't wait for response)
+    println(process.in, "default(nbthreads, $threads_per_session); print(1)")
+    flush(process.in)
+
+    # Quick verification with short timeout
+    ready = false
+    for i in 1:5
+        if !eof(process.out)
+            line = readline(process.out)
+            if !isempty(line)
+                ready = true
+                break
+            end
+        end
+        sleep(0.05)
+    end
+
+    if !ready
+        error("GP/PARI session $session_id failed to start")
+    end
+
+    return GPSession(process, process.in, process.out, ReentrantLock(), session_id)
+end
+
+function init_gp_session_pool(num_sessions::Int=10, threads_per_session::Int=12)
+    """Initialize a pool of GP/PARI sessions for parallel computation"""
+    lock(GP_POOL_LOCK) do
+        if !isempty(GP_SESSION_POOL)
+            return  # Already initialized
+        end
+
+        total_cores = Base.Sys.CPU_THREADS
+
+        # Adjust threads per session based on available cores
+        threads_per_session = max(1, div(total_cores, num_sessions))
+
+        println("Initializing GP/PARI pool with $num_sessions sessions (each with $threads_per_session threads)...")
+
+        # Start sessions in parallel using Julia tasks
+        tasks = Task[]
+        for i in 1:num_sessions
+            task = @async begin
+                try
+                    start_gp_session_single(i, threads_per_session)
+                catch e
+                    println("Warning: Failed to start GP session $i: $e")
+                    nothing
+                end
+            end
+            push!(tasks, task)
+        end
+
+        # Wait for all sessions to start
+        print("Starting sessions")
+        for (i, task) in enumerate(tasks)
+            session = fetch(task)
+            if session !== nothing
+                push!(GP_SESSION_POOL, session)
+            end
+            print(".")
+        end
+        println()
+
+        println("GP/PARI pool ready with $(length(GP_SESSION_POOL)) sessions.")
+    end
+end
+
+function stop_gp_session_pool()
+    """Stop all GP/PARI sessions in the pool"""
+    lock(GP_POOL_LOCK) do
+        for session in GP_SESSION_POOL
+            if session.process !== nothing
+                try
+                    println(session.stdin, "quit()")
+                    close(session.stdin)
+                    close(session.stdout)
+                catch
+                end
+            end
+        end
+        empty!(GP_SESSION_POOL)
+    end
+end
+
+function get_gp_session()::GPSession
+    """Get an available GP session from the pool (blocks if all busy)"""
+    while true
+        lock(GP_POOL_LOCK) do
+            for session in GP_SESSION_POOL
+                # Try to acquire this session's lock without blocking
+                if trylock(session.lock)
+                    return session
+                end
+            end
+        end
+        # All sessions busy, wait a bit
+        sleep(0.001)
+    end
+end
+
+function release_gp_session(session::GPSession)
+    """Release a GP session back to the pool"""
+    unlock(session.lock)
+end
+
+function gp_eval(command::String; use_print::Bool=true)::String
+    """
+    Evaluate a command using a session from the pool
+    Automatically acquires and releases a session
+    """
+    # Ensure pool is initialized
+    if isempty(GP_SESSION_POOL)
+        lock(GP_POOL_LOCK) do
+            if isempty(GP_SESSION_POOL)
+                init_gp_session_pool()
+            end
+        end
+    end
+
+    # Get a session from the pool
+    session = get_gp_session()
+
+    try
+        # Send command
+        if use_print
+            println(session.stdin, "print($command)")
+        else
+            println(session.stdin, command)
+        end
+        flush(session.stdin)
+
+        # Read result
+        result = readline(session.stdout)
+
+        return strip(result)
+    catch e
+        println("Warning: GP session $(session.id) error: ", e)
+        return "ERROR"
+    finally
+        # Always release the session back to the pool
+        release_gp_session(session)
+    end
+end
 
 # Helper functions for rational arithmetic
 function parse_rational(s::String)::Tuple{Int64, Int64}
@@ -175,27 +375,133 @@ function eval_discriminant_derivative(num::Int64, den::Int64)::BigFloat
     return eval_poly_rational(D_PRIME_COEFFS, num, den)
 end
 
-function compute_conductor_mestre(num::Int64, den::Int64)::BigInt
+function eval_a4(num::Int64, den::Int64)::Rational{BigInt}
     """
-    Compute the conductor of Mestre's curve at t = num/den using Sage
+    Evaluate a4(t) at t = num/den
+    Returns a rational number: a4(t) = A4_NUMER(t) / A4_DENOM
+    """
+    numer_val = eval_poly_rational(A4_NUMER_COEFFS, num, den)
+    # Convert BigFloat to rational
+    # numer_val is already A4_NUMER(t), so a4(t) = numer_val / A4_DENOM
+    return Rational{BigInt}(BigInt(round(numer_val)), A4_DENOM)
+end
 
-    Constructs Mestre's plane cubic and computes the Jacobian's conductor.
-    Calls the Sage helper script: compute_mestre_curve.sage.py
+function eval_a6(num::Int64, den::Int64)::Rational{BigInt}
     """
-    # Format rational as string
-    rational_str = rational_to_string(num, den)
+    Evaluate a6(t) at t = num/den
+    Returns a rational number: a6(t) = A6_NUMER(t) / A6_DENOM
+    """
+    numer_val = eval_poly_rational(A6_NUMER_COEFFS, num, den)
+    # Convert BigFloat to rational
+    return Rational{BigInt}(BigInt(round(numer_val)), A6_DENOM)
+end
+
+function check_rank_mestre(num::Int64, den::Int64, min_rank::Int=12)::Bool
+    """
+    Check if Mestre's curve at t has rank >= min_rank using GP/PARI
+    Returns true if rank lower bound >= min_rank, false otherwise
+
+    WARNING: This is VERY expensive (can take seconds per curve)
+    """
+    # Evaluate a4(t) and a6(t)
+    a4_val = eval_a4(num, den)
+    a6_val = eval_a6(num, den)
+
+    a4_num = numerator(a4_val)
+    a4_den = denominator(a4_val)
+    a6_num = numerator(a6_val)
+    a6_den = denominator(a6_val)
+
+    # Create GP script to compute rank
+    gp_script = """
+    a4 = $a4_num/$a4_den;
+    a6 = $a6_num/$a6_den;
+    E = ellinit([0, 0, 0, a4, a6]);
+    if (E == 0, print("INVALID"), r = ellrank(E); print(r[1]));
+    quit();
+    """
+
+    temp_file = tempname() * ".gp"
+    open(temp_file, "w") do f
+        write(f, gp_script)
+    end
 
     try
-        # Call Sage helper to compute conductor
-        result = read(pipeline(`sage compute_mestre_curve.sage.py conductor $rational_str`, stderr=devnull), String)
+        # Run GP with timeout (30 seconds max)
+        result = read(pipeline(`timeout 30 gp -q -s 200000000 $temp_file`, stderr=devnull), String)
+        rm(temp_file)
         result = strip(result)
 
-        # Check for error
-        if result == "ERROR" || isempty(result)
+        if result == "INVALID" || isempty(result)
+            return false
+        end
+
+        # Parse the rank lower bound
+        rank_lower = parse(Int, result)
+        return rank_lower >= min_rank
+    catch e
+        if isfile(temp_file)
+            rm(temp_file)
+        end
+        return false
+    end
+end
+
+function compute_conductor_mestre(num::Int64, den::Int64; check_rank::Bool=false, min_rank::Int=12)::BigInt
+    """
+    Compute the conductor of Mestre's curve at t = num/den using GP/Pari
+
+    Mestre's curve in Weierstrass form: y^2 = x^3 + a4(t)*x + a6(t)
+    where a4(t) and a6(t) are rational polynomials in t
+
+    If check_rank=true, validates that rank >= min_rank before computing conductor
+    WARNING: Rank checking is VERY slow!
+    """
+    # Optional: Check rank constraint first
+    if check_rank && !check_rank_mestre(num, den, min_rank)
+        return BigInt(typemax(Int64))  # Invalid: rank too low
+    end
+
+    # Evaluate a4(t) and a6(t) at the given rational
+    a4_val = eval_a4(num, den)
+    a6_val = eval_a6(num, den)
+
+    # Extract numerator and denominator
+    a4_num = numerator(a4_val)
+    a4_den = denominator(a4_val)
+    a6_num = numerator(a6_val)
+    a6_den = denominator(a6_val)
+
+    # Create GP/Pari script using temp file (more reliable than pipes)
+    gp_script = """
+    a4 = $a4_num/$a4_den;
+    a6 = $a6_num/$a6_den;
+    E = ellinit([0, 0, 0, a4, a6]);
+    if (E == 0, print("INVALID"), print(ellglobalred(E)[1]));
+    quit();
+    """
+
+    temp_file = tempname() * ".gp"
+    open(temp_file, "w") do f
+        write(f, gp_script)
+    end
+
+    try
+        # Run GP with parallelization
+        result = read(pipeline(`gp -q -s 200000000 $temp_file`, stderr=devnull), String)
+        rm(temp_file)
+        result = strip(result)
+
+        # Check for various error conditions
+        if result == "INVALID" ||
+           contains(result, "error") ||
+           contains(result, "overflow") ||
+           contains(result, "***") ||
+           isempty(result)
             return BigInt(typemax(Int64))
         end
 
-        # Parse as BigInt
+        # Try to parse as BigInt
         conductor = parse(BigInt, result)
 
         # Sanity check: conductor should be positive
@@ -205,7 +511,42 @@ function compute_conductor_mestre(num::Int64, den::Int64)::BigInt
 
         return conductor
     catch e
-        println("Warning: Sage conductor computation failed for $rational_str: ", e)
+        if isfile(temp_file)
+            rm(temp_file)
+        end
+        return BigInt(typemax(Int64))
+    end
+end
+
+function compute_conductor_simple(num::Int64, den::Int64)::BigInt
+    """Fallback: compute conductor for simple curve y^2 = x^3 + t*x + 1"""
+    gp_script = """
+    t = $num/$den;
+    E = ellinit([0, 0, 0, t, 1]);
+    if (E == 0, print("INVALID"), red = ellglobalred(E); print(red[1]));
+    quit();
+    """
+
+    temp_file = tempname() * ".gp"
+    open(temp_file, "w") do f
+        write(f, gp_script)
+    end
+
+    try
+        result = read(pipeline(`gp -q $temp_file`), String)
+        rm(temp_file)
+        result = strip(result)
+
+        if result == "INVALID"
+            return BigInt(typemax(Int64))
+        end
+
+        return parse(BigInt, result)
+    catch e
+        println("Warning: GP/Pari failed: ", e)
+        if isfile(temp_file)
+            rm(temp_file)
+        end
         return BigInt(typemax(Int64))
     end
 end
@@ -307,7 +648,8 @@ function reward_calc(obj::OBJ_TYPE)::REWARD_TYPE
     """
     Compute the reward = -log(conductor(t))
 
-    Lower conductors are better (higher reward).
+    If CHECK_RANK_CONSTRAINT is true, only accepts curves with rank >= MIN_RANK_REQUIRED
+    WARNING: Rank checking makes this EXTREMELY slow!
     """
     try
         num, den = parse_rational(obj)
@@ -318,8 +660,8 @@ function reward_calc(obj::OBJ_TYPE)::REWARD_TYPE
             return Float32(-1e9)
         end
 
-        # Compute conductor using Sage
-        conductor = compute_conductor_mestre(num, den)
+        # Compute conductor (with optional rank check)
+        conductor = compute_conductor_mestre(num, den, check_rank=CHECK_RANK_CONSTRAINT, min_rank=MIN_RANK_REQUIRED)
 
         if conductor <= 0 || conductor >= BigInt(10)^100
             return Float32(-1e9)
@@ -338,38 +680,60 @@ const SMALL_PRIMES = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47,
 
 function compute_ellap_batch(num::Int64, den::Int64)::Vector{Int}
     """
-    Compute ap values for Mestre's curve at t = num/den using Sage
-
-    Constructs Mestre's plane cubic and computes ap for all primes p < 100.
-    Calls the Sage helper script: compute_mestre_curve.sage.py
-
+    Compute ellap(E(t), p) for all primes p < 100
     Returns vector of 25 integers: [a_2, a_3, a_5, ..., a_97]
     Returns zeros on error
     """
-    # Format rational as string
-    rational_str = rational_to_string(num, den)
+
+    # Evaluate a4(t) and a6(t)
+    a4_val = eval_a4(num, den)
+    a6_val = eval_a6(num, den)
+
+    a4_num = numerator(a4_val)
+    a4_den = denominator(a4_val)
+    a6_num = numerator(a6_val)
+    a6_den = denominator(a6_val)
+
+    # Create GP script to compute all ellap values
+    # Build the script dynamically with each ellap call
+    ellap_calls = join(["ellap(E,$p)" for p in SMALL_PRIMES], ",")
+    gp_script = """
+a4=$a4_num/$a4_den;
+a6=$a6_num/$a6_den;
+E=ellinit([0,0,0,a4,a6]);
+print([$ellap_calls]);
+quit();
+"""
+
+    temp_file = tempname() * ".gp"
+    open(temp_file, "w") do f
+        write(f, gp_script)
+    end
 
     try
-        # Call Sage helper to compute ap values
-        result = read(pipeline(`sage compute_mestre_curve.sage.py ap $rational_str`, stderr=devnull), String)
+        result = read(pipeline(`gp -q -s 100000000 $temp_file`, stderr=devnull), String)
+        rm(temp_file)
         result = strip(result)
 
-        if isempty(result)
+        if result == "INVALID" || isempty(result)
             return zeros(Int, 25)
         end
 
-        # Parse comma-separated integers
+        # Parse GP vector output format: [a, b, c, ...]
+        # Remove brackets and split on commas
+        result = replace(result, r"[\[\]]" => "")  # Remove [ and ]
         ap_values = [parse(Int, strip(s)) for s in split(result, ",")]
 
         # Verify we got exactly 25 values
         if length(ap_values) != 25
-            println("Warning: Expected 25 ap values for $rational_str, got $(length(ap_values))")
             return zeros(Int, 25)
         end
 
         return ap_values
     catch e
-        println("Warning: Sage ap computation failed for $rational_str: ", e)
+        if isfile(temp_file)
+            rm(temp_file)
+        end
         return zeros(Int, 25)
     end
 end
@@ -379,12 +743,24 @@ function empty_starting_point()::OBJ_TYPE
     return "1/1"
 end
 
+# Note: Persistent GP sessions are disabled for now due to deadlock issues
+# Using temp files instead - still fast with Julia multi-threading
+# To re-enable, uncomment below:
+# println("Starting GP/PARI session pool...")
+# init_gp_session_pool()
+# atexit(stop_gp_session_pool)
+
 # Print configuration
 println()
 println("="^80)
 println("Mestre Rank ≥12 Family - Conductor Minimization")
 println("="^80)
-println("Using Sage for correct plane cubic curve construction")
-println("Optimizing conductor via gradient descent on discriminant")
+if CHECK_RANK_CONSTRAINT
+    println("⚠️  RANK CHECKING ENABLED: Only accepting curves with rank ≥ $MIN_RANK_REQUIRED")
+    println("⚠️  WARNING: This will be EXTREMELY SLOW (~10-30s per curve)")
+else
+    println("Rank checking: DISABLED (optimizing conductor only)")
+    println("To enable rank checking, set CHECK_RANK_CONSTRAINT = true in problem_mestre_rank12.jl")
+end
 println("="^80)
 println()
