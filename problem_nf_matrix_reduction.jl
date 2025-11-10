@@ -6,12 +6,12 @@ Number Field Matrix Reduction Problem
 
 Dataset: Degree 3 Galois number fields with Minkowski embeddings
 Goal: Minimize ||AM||_∞ where:
-  - M is the 3×3 matrix [[1, u1, u1²], [1, u2, u2²], [1, u3, u3²]]
-  - u1, u2, u3 are the three Minkowski embeddings
-  - A is a 3×3 invertible matrix with integer entries
+  - M is the 3×3 matrix [[1, v1, v1²], [1, v2, v2²], [1, v3, v3²]]
+  - v1, v2, v3 are randomized embeddings (v = R·u for circulant R)
+  - A is a 3×3 circulant matrix with integer entries
   - ||·||_∞ is the max absolute value of matrix coefficients
 
-Local search: Multiply A on the left by random 3×3 invertible integer matrices
+Local search: Multiply A on the left by random circulant matrices [[a,b,c],[c,a,b],[b,c,a]]
 """
 
 # Load the number field dataset
@@ -134,39 +134,51 @@ function construct_M_matrix(nf::NumberField)::Matrix{Float64}
     ]
 end
 
-function parse_object(obj::OBJ_TYPE)::Tuple{Int, Matrix{Int64}}
+function parse_object(obj::OBJ_TYPE)::Tuple{Matrix{Int64}, Int, Int, Matrix{Float64}}
     """
-    Parse object string "field_idx:a11,a12,a13,a21,a22,a23,a31,a32,a33"
-    Returns (field_index, A_matrix)
+    Parse object string "a11,a12,...,a33,disc,index,m11,m12,...,m33"
+    Returns (A_matrix, discriminant, index, M_matrix)
     """
-    parts = split(obj, ":")
-    if length(parts) != 2
-        error("Invalid object format: $obj")
+    parts = split(obj, ",")
+    if length(parts) != 20
+        error("Invalid object format: expected 20 entries (9 for A, 2 for field properties, 9 for M), got $(length(parts))")
     end
 
-    field_idx = parse(Int, parts[1])
-    matrix_str = parts[2]
+    # Parse A (first 9 entries, integers)
+    A_entries = [parse(Int64, parts[i]) for i in 1:9]
+    A = reshape(A_entries, 3, 3)'
 
-    # Parse the 9 matrix entries
-    entries = [parse(Int64, s) for s in split(matrix_str, ",")]
-    if length(entries) != 9
-        error("Expected 9 matrix entries, got $(length(entries))")
-    end
+    # Parse field properties
+    disc = parse(Int, parts[10])
+    index = parse(Int, parts[11])
 
-    # Construct 3×3 matrix (row-major order)
-    A = reshape(entries, 3, 3)'
+    # Parse M (last 9 entries, floats)
+    M_entries = [parse(Float64, parts[i]) for i in 12:20]
+    M = reshape(M_entries, 3, 3)'
 
-    return (field_idx, A)
+    return (A, disc, index, M)
 end
 
-function object_to_string(field_idx::Int, A::Matrix{Int64})::OBJ_TYPE
+function object_to_string(A::Matrix{Int64}, disc::Int, index::Int, M::Matrix{Float64})::OBJ_TYPE
     """
-    Convert (field_index, A_matrix) to string representation
+    Convert (A_matrix, discriminant, index, M_matrix) to string representation
     """
-    # Flatten matrix in row-major order
-    entries = vec(A')
-    matrix_str = join(entries, ",")
-    return "$field_idx:$matrix_str"
+    # Flatten A and M in row-major order
+    A_flat = vec(A')
+    M_flat = vec(M')
+
+    # Combine into single string
+    parts = String[]
+    for val in A_flat
+        push!(parts, string(val))
+    end
+    push!(parts, string(disc))
+    push!(parts, string(index))
+    for val in M_flat
+        push!(parts, string(val))
+    end
+
+    return join(parts, ",")
 end
 
 function matrix_max_norm(M::Matrix{Float64})::Float64
@@ -217,30 +229,26 @@ end
 function greedy_search_from_startpoint(db, obj::OBJ_TYPE)::Vector{OBJ_TYPE}
     """
     Local search: Generate multiple candidate matrices by multiplying A
-    on the left by random 3×3 invertible integer matrices
+    on the left by random circulant matrices [[a,b,c],[c,a,b],[b,c,a]]
 
     Returns several candidates to explore different search directions
     """
     try
-        field_idx, A_current = parse_object(obj)
+        A_current, disc, index, M = parse_object(obj)
 
-        # Get the number field and its M matrix
-        nf = NUMBER_FIELDS[field_idx]
-        M = construct_M_matrix(nf)
-
-        # Generate multiple random transformations
+        # Generate multiple random circulant transformations
         results = Vector{OBJ_TYPE}()
         num_samples = 10
 
         for _ in 1:num_samples
-            # Generate random invertible matrix R
-            R = generate_random_invertible_matrix()
+            # Generate random circulant matrix
+            R = generate_circulant_matrix()
 
             # Compute new A' = R * A
             A_new = R * A_current
 
-            # Add to results
-            push!(results, object_to_string(field_idx, A_new))
+            # Add to results (disc, index, M stay the same)
+            push!(results, object_to_string(A_new, disc, index, M))
         end
 
         return results
@@ -257,11 +265,7 @@ function reward_calc(obj::OBJ_TYPE)::REWARD_TYPE
     Negative because we want to minimize the norm, but the framework maximizes reward
     """
     try
-        field_idx, A = parse_object(obj)
-
-        # Get the number field and construct M
-        nf = NUMBER_FIELDS[field_idx]
-        M = construct_M_matrix(nf)
+        A, disc, index, M = parse_object(obj)
 
         # Compute AM
         AM = Float64.(A) * M
@@ -283,9 +287,37 @@ function empty_starting_point()::OBJ_TYPE
     - Pick a random number field from the dataset
     - Start with the identity matrix
     """
-    field_idx = rand(1:length(NUMBER_FIELDS))
+    nf = rand(NUMBER_FIELDS)
+    M = construct_M_matrix(nf)
     A_identity = Matrix{Int64}(I, 3, 3)
-    return object_to_string(field_idx, A_identity)
+    return object_to_string(A_identity, nf.disc_abs, nf.index, M)
+end
+
+function compute_features(obj::OBJ_TYPE)::Vector{Float64}
+    """
+    Compute features for a matrix state to be used by the transformer.
+    Features: disc, index, and all 9 entries of M (flattened)
+
+    M is the fundamental number field matrix that determines problem difficulty.
+    A is already encoded in the object string, so we don't need AM here.
+    """
+    try
+        A, disc, index, M = parse_object(obj)
+
+        # Features
+        disc_float = Float64(disc)
+        index_float = Float64(index)
+
+        # Flatten M (all 9 entries, row-major order)
+        M_flat = vec(M')
+        features = [disc_float, index_float]
+        append!(features, M_flat)
+
+        return features
+    catch e
+        println("Error computing features for $obj: $e")
+        return zeros(Float64, 11)  # Return zeros on error (2 + 9 = 11 features)
+    end
 end
 
 # Print configuration
@@ -294,7 +326,7 @@ println("="^80)
 println("Number Field Matrix Reduction Problem")
 println("="^80)
 println("Dataset: $(length(NUMBER_FIELDS)) degree 3 Galois number fields")
-println("Goal: Minimize ||AM||_∞ where M is constructed from Minkowski embeddings")
-println("Local search: Multiply A by random 3×3 invertible integer matrices")
+println("Goal: Minimize ||AM||_∞ where M is constructed from randomized Minkowski embeddings")
+println("Local search: Multiply A by random circulant matrices [[a,b,c],[c,a,b],[b,c,a]]")
 println("="^80)
 println()

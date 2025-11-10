@@ -15,7 +15,8 @@ using Dates
 #include("problem_4_cycle_free.jl")
 #include("problem_permanent_avoid_123.jl")
 #include("problem_elliptic_simple.jl")      # Simple test curve: y² = x³ + tx + 1
-include("problem_mestre_rank12.jl")         # Mestre's rank ≥ 12 family (actual discriminant)
+#include("problem_mestre_rank12.jl")         # Mestre's rank ≥ 12 family (actual discriminant)
+include("problem_nf_matrix_reduction.jl")   # Number field matrix reduction
 
 
 #########################################################################################
@@ -56,14 +57,13 @@ function write_output_to_file(db)
         while lines_written < final_database_size && curr_rew_index <= length(rewards)
             curr_rew = rewards[curr_rew_index]
             for obj in db.rewards[curr_rew][1:min(final_database_size - lines_written, length(db.rewards[curr_rew]))]
-                # Compute ellap features for this rational
-                num, den = parse_rational(obj)
-                ellap_values = compute_ellap_batch(num, den)
+                # Compute features for this object
+                features = compute_features(obj)
 
-                # Write: rational,a_2,a_3,...,a_97
+                # Write: object,feature1,feature2,...
                 write(file, obj)
-                for ap in ellap_values
-                    write(file, ",$ap")
+                for feat in features
+                    write(file, ",$feat")
                 end
                 write(file, "\n")
             end

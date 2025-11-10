@@ -18,31 +18,9 @@ function main()
             # Generate a random starting point
             obj = empty_starting_point()
 
-            # Compute some basic features of the current state
-            field_idx, A = parse_object(obj)
-            nf = NUMBER_FIELDS[field_idx]
-            M = construct_M_matrix(nf)
-            AM = Float64.(A) * M
-
-            # Features: matrix norm, discriminant, index, and first few entries of AM
-            norm_val = matrix_max_norm(AM)
-            disc = nf.disc_abs
-            index = nf.index
-
-            # Flatten AM and take some entries as features
-            AM_flat = vec(AM')
-
-            # Write: object,norm,disc,index,AM_entries...
+            # Just write the object (it already contains A, disc, index, M)
+            # No need to write features - those are computed later
             write(f, obj)
-            write(f, ",$norm_val")
-            write(f, ",$disc")
-            write(f, ",$index")
-
-            # Add first 6 entries of AM as additional features
-            for val in AM_flat[1:min(6, length(AM_flat))]
-                write(f, ",$(round(val, digits=2))")
-            end
-
             write(f, "\n")
 
             if i % 500 == 0
