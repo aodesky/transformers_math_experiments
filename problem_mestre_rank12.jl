@@ -475,8 +475,8 @@ quit();
     end
 
     try
-        # Run GP with parallelization
-        result = read(pipeline(`gp -q -s 200000000 $temp_file`, stderr=devnull), String)
+        # Run GP with 3 second timeout
+        result = read(pipeline(`timeout 3 gp -q -s 200000000 $temp_file`, stderr=devnull), String)
         rm(temp_file)
         result = strip(result)
 
@@ -521,7 +521,7 @@ function compute_conductor_simple(num::Int64, den::Int64)::BigInt
     end
 
     try
-        result = read(pipeline(`gp -q $temp_file`), String)
+        result = read(pipeline(`timeout 3 gp -q $temp_file`), String)
         rm(temp_file)
         result = strip(result)
 
@@ -554,14 +554,22 @@ function greedy_search_from_startpoint(db, obj::OBJ_TYPE)::Vector{OBJ_TYPE}
     # Evaluate discriminant
     disc = eval_discriminant(num, den)
 
-    # Check if discriminant is zero (invalid curve)
-    if abs(disc) < 1e-10
+    # Check if discriminant is zero or not finite (invalid curve)
+    if !isfinite(disc) || abs(disc) < 1e-10
+        println("WARNING: Invalid discriminant at t=$num/$den: disc=$disc")
         new_num, new_den = simplify_rational(num + rand(-5:5), den + max(1, rand(-2:2)))
         return [rational_to_string(new_num, new_den)]
     end
 
     # Evaluate derivative
     disc_deriv = eval_discriminant_derivative(num, den)
+
+    # Check if derivative is finite
+    if !isfinite(disc_deriv)
+        println("WARNING: Invalid derivative at t=$num/$den: disc_deriv=$disc_deriv, disc=$disc")
+        new_num, new_den = simplify_rational(num + rand(-5:5), den + max(1, rand(-2:2)))
+        return [rational_to_string(new_num, new_den)]
+    end
 
     # Try multiple learning rates for diversity
     learning_rates = [1/20, 1/50, 1/100, 1/200]
@@ -571,12 +579,24 @@ function greedy_search_from_startpoint(db, obj::OBJ_TYPE)::Vector{OBJ_TYPE}
 
     t_current = Float64(num) / Float64(den)
 
+    # Sanity check on starting point
+    if !isfinite(t_current)
+        println("WARNING: Invalid starting point t=$num/$den: t_current=$t_current")
+        return [rational_to_string(num, den)]
+    end
+
     for learning_rate in learning_rates
         # Gradient descent step (work in Float64 then convert back to rational)
         if disc > 0
             t_new_float = t_current - learning_rate * Float64(disc_deriv)
         else
             t_new_float = t_current + learning_rate * Float64(disc_deriv)
+        end
+
+        # Skip if result is NaN or Inf
+        if !isfinite(t_new_float)
+            println("WARNING: Gradient descent produced invalid value at t=$num/$den: t_new=$t_new_float, learning_rate=$learning_rate, disc=$disc, disc_deriv=$disc_deriv")
+            continue
         end
 
         # Convert float back to rational with reasonable denominator
@@ -593,12 +613,15 @@ function greedy_search_from_startpoint(db, obj::OBJ_TYPE)::Vector{OBJ_TYPE}
 
             # Verify non-zero discriminant
             new_disc = eval_discriminant(new_num, new_den)
-            if abs(new_disc) < 1e-10
+            if !isfinite(new_disc)
+                println("WARNING: Invalid discriminant after gradient step from t=$num/$den: new_t=$new_num/$new_den, disc=$new_disc")
+            elseif abs(new_disc) < 1e-10
                 new_num += 1
                 new_num, new_den = simplify_rational(new_num, new_den)
+                push!(results, rational_to_string(new_num, new_den))
+            else
+                push!(results, rational_to_string(new_num, new_den))
             end
-
-            push!(results, rational_to_string(new_num, new_den))
         catch
             # Number too large, skip this learning rate
         end
@@ -619,7 +642,9 @@ function greedy_search_from_startpoint(db, obj::OBJ_TYPE)::Vector{OBJ_TYPE}
 
         # Check discriminant
         new_disc = eval_discriminant(perturbed_num, perturbed_den)
-        if abs(new_disc) > 1e-10
+        if !isfinite(new_disc)
+            println("WARNING: Invalid discriminant in perturbation from t=$num/$den: perturbed_t=$perturbed_num/$perturbed_den, disc=$new_disc")
+        elseif abs(new_disc) > 1e-10
             push!(results, rational_to_string(perturbed_num, perturbed_den))
         end
     end
@@ -716,7 +741,7 @@ quit();
     end
 
     try
-        result = read(pipeline(`gp -q -s 100000000 $temp_file`, stderr=devnull), String)
+        result = read(pipeline(`timeout 3 gp -q -s 100000000 $temp_file`, stderr=devnull), String)
         rm(temp_file)
         result = strip(result)
 
