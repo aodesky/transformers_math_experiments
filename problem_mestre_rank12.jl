@@ -97,49 +97,17 @@ const D_PRIME_COEFFS = BigInt[
     116724890597580319681815300992222752267149653311488000000
 ]
 
-# Weierstrass form coefficients: y^2 = x^3 + a4(t)*x + a6(t)
-# These are rational polynomials: a4(t) = A4_NUMER(t) / A4_DENOM
-# Computed from Mestre's plane cubic using Sage
+# Mestre's plane cubic coefficients from the paper
+# The curve is: y^3 + A1*x^2*y + A2*x*y*z + A3*y*z^2 + A4*x^3 + A5*x^2*z + A6*x*z^2 + A7*z^3 = 0
+# These polynomial coefficients are in increasing degree order (constant, t, t^2, ...)
 
-const A4_NUMER_COEFFS = BigInt[
-    -5013558100494028800,
-    -31223157822576691200,
-    36850819289195923200,
-    375767910105823324800,
-    -909015201933727021200,
-    627735360031439126400,
-    -190333976336927546400,
-    627968231066603606400,
-    -909272532073107781200,
-    376003880650827484800,
-    36714196278367683200,
-    -31220058312737011200,
-    -4996097133777388800,
-]
-const A4_DENOM = BigInt(3)
-
-const A6_NUMER_COEFFS = BigInt[
-    22668186571459155780894720000,
-    203387292236079580258713600000,
-    134498583657781883343636480000,
-    -3633649404971677060116049920000,
-    -1672385445663582687556688640000,
-    40212991310412954466845627840000,
-    -66623930317405025667601698960000,
-    -46203257144166699494281956480000,
-    292205940790151219565054099600000,
-    -429332179402122264136129783680000,
-    292343874284328539800854200400000,
-    -46390902011588484059487857280000,
-    -66508882717375442192538796560000,
-    40200621730127022808322677440000,
-    -1693906103722165170601285440000,
-    -3626101530671701430935032320000,
-    135762415484271030280730880000,
-    202896505624301923064140800000,
-    22566782308794025025387520000,
-]
-const A6_DENOM = BigInt(27)
+const MESTRE_A1 = [-26940, 51220, -26940]
+const MESTRE_A2 = [-1320, 17280, 17280, -1320]
+const MESTRE_A3 = [-18876, -153828, 301221, -153828, -18776]
+const MESTRE_A4 = [-1489600, 1489600, 1489600, -1489600]
+const MESTRE_A5 = [5816880, 8043880, -27463500, 8043880, 5816880]
+const MESTRE_A6 = [3416160, -24166320, 19202040, 19202040, -24166320, 3416160]
+const MESTRE_A7 = [-745360, -15468024, 18853764, -138394, 18853764, -15468024, -745360]
 
 # Configuration: Enable rank checking (WARNING: VERY SLOW!)
 const CHECK_RANK_CONSTRAINT = false  # Set to true to require rank >= 12
@@ -375,25 +343,16 @@ function eval_discriminant_derivative(num::Int64, den::Int64)::BigFloat
     return eval_poly_rational(D_PRIME_COEFFS, num, den)
 end
 
-function eval_a4(num::Int64, den::Int64)::Rational{BigInt}
+function eval_mestre_poly(coeffs::Vector{Int}, t_rat::Rational{Int64})::Rational{Int64}
     """
-    Evaluate a4(t) at t = num/den
-    Returns a rational number: a4(t) = A4_NUMER(t) / A4_DENOM
+    Evaluate polynomial at rational t
+    Coefficients are in increasing degree order (constant, t, t^2, ...)
     """
-    numer_val = eval_poly_rational(A4_NUMER_COEFFS, num, den)
-    # Convert BigFloat to rational
-    # numer_val is already A4_NUMER(t), so a4(t) = numer_val / A4_DENOM
-    return Rational{BigInt}(BigInt(round(numer_val)), A4_DENOM)
-end
-
-function eval_a6(num::Int64, den::Int64)::Rational{BigInt}
-    """
-    Evaluate a6(t) at t = num/den
-    Returns a rational number: a6(t) = A6_NUMER(t) / A6_DENOM
-    """
-    numer_val = eval_poly_rational(A6_NUMER_COEFFS, num, den)
-    # Convert BigFloat to rational
-    return Rational{BigInt}(BigInt(round(numer_val)), A6_DENOM)
+    result = Rational{Int64}(0)
+    for (i, c) in enumerate(coeffs)
+        result += c * t_rat^(i-1)
+    end
+    return result
 end
 
 function check_rank_mestre(num::Int64, den::Int64, min_rank::Int=12)::Bool
@@ -403,23 +362,37 @@ function check_rank_mestre(num::Int64, den::Int64, min_rank::Int=12)::Bool
 
     WARNING: This is VERY expensive (can take seconds per curve)
     """
-    # Evaluate a4(t) and a6(t)
-    a4_val = eval_a4(num, den)
-    a6_val = eval_a6(num, den)
+    t_rat = Rational{Int64}(num, den)
 
-    a4_num = numerator(a4_val)
-    a4_den = denominator(a4_val)
-    a6_num = numerator(a6_val)
-    a6_den = denominator(a6_val)
+    # Evaluate Mestre's polynomials at t
+    A1 = eval_mestre_poly(MESTRE_A1, t_rat)
+    A2 = eval_mestre_poly(MESTRE_A2, t_rat)
+    A3 = eval_mestre_poly(MESTRE_A3, t_rat)
+    A4 = eval_mestre_poly(MESTRE_A4, t_rat)
+    A5 = eval_mestre_poly(MESTRE_A5, t_rat)
+    A6 = eval_mestre_poly(MESTRE_A6, t_rat)
+    A7 = eval_mestre_poly(MESTRE_A7, t_rat)
 
-    # Create GP script to compute rank
+    # Create GP script to compute rank from plane cubic
     gp_script = """
-    a4 = $a4_num/$a4_den;
-    a6 = $a6_num/$a6_den;
-    E = ellinit([0, 0, 0, a4, a6]);
-    if (E == 0, print("INVALID"), r = ellrank(E); print(r[1]));
-    quit();
-    """
+A1=$(numerator(A1))/$(denominator(A1));
+A2=$(numerator(A2))/$(denominator(A2));
+A3=$(numerator(A3))/$(denominator(A3));
+A4=$(numerator(A4))/$(denominator(A4));
+A5=$(numerator(A5))/$(denominator(A5));
+A6=$(numerator(A6))/$(denominator(A6));
+A7=$(numerator(A7))/$(denominator(A7));
+
+\\\\ Affine plane cubic (z=1)
+x='x; y='y;
+f = y^3 + A1*x^2*y + A2*x*y + A3*y + A4*x^3 + A5*x^2 + A6*x + A7;
+
+\\\\ Convert to Weierstrass form
+E = ellinit(ellfromeqn(f));
+
+if (E == 0, print("INVALID"), r = ellrank(E); print(r[1]));
+quit();
+"""
 
     temp_file = tempname() * ".gp"
     open(temp_file, "w") do f
@@ -449,10 +422,9 @@ end
 
 function compute_conductor_mestre(num::Int64, den::Int64; check_rank::Bool=false, min_rank::Int=12)::BigInt
     """
-    Compute the conductor of Mestre's curve at t = num/den using GP/Pari
+    Compute the conductor of Mestre's curve at t = num/den using GP/PARI
 
-    Mestre's curve in Weierstrass form: y^2 = x^3 + a4(t)*x + a6(t)
-    where a4(t) and a6(t) are rational polynomials in t
+    Converts Mestre's plane cubic to Weierstrass form using ellfromeqn
 
     If check_rank=true, validates that rank >= min_rank before computing conductor
     WARNING: Rank checking is VERY slow!
@@ -462,24 +434,37 @@ function compute_conductor_mestre(num::Int64, den::Int64; check_rank::Bool=false
         return BigInt(typemax(Int64))  # Invalid: rank too low
     end
 
-    # Evaluate a4(t) and a6(t) at the given rational
-    a4_val = eval_a4(num, den)
-    a6_val = eval_a6(num, den)
+    t_rat = Rational{Int64}(num, den)
 
-    # Extract numerator and denominator
-    a4_num = numerator(a4_val)
-    a4_den = denominator(a4_val)
-    a6_num = numerator(a6_val)
-    a6_den = denominator(a6_val)
+    # Evaluate Mestre's polynomials at t
+    A1 = eval_mestre_poly(MESTRE_A1, t_rat)
+    A2 = eval_mestre_poly(MESTRE_A2, t_rat)
+    A3 = eval_mestre_poly(MESTRE_A3, t_rat)
+    A4 = eval_mestre_poly(MESTRE_A4, t_rat)
+    A5 = eval_mestre_poly(MESTRE_A5, t_rat)
+    A6 = eval_mestre_poly(MESTRE_A6, t_rat)
+    A7 = eval_mestre_poly(MESTRE_A7, t_rat)
 
-    # Create GP/Pari script using temp file (more reliable than pipes)
+    # Create GP/PARI script using temp file
     gp_script = """
-    a4 = $a4_num/$a4_den;
-    a6 = $a6_num/$a6_den;
-    E = ellinit([0, 0, 0, a4, a6]);
-    if (E == 0, print("INVALID"), print(ellglobalred(E)[1]));
-    quit();
-    """
+A1=$(numerator(A1))/$(denominator(A1));
+A2=$(numerator(A2))/$(denominator(A2));
+A3=$(numerator(A3))/$(denominator(A3));
+A4=$(numerator(A4))/$(denominator(A4));
+A5=$(numerator(A5))/$(denominator(A5));
+A6=$(numerator(A6))/$(denominator(A6));
+A7=$(numerator(A7))/$(denominator(A7));
+
+\\\\ Affine plane cubic (z=1)
+x='x; y='y;
+f = y^3 + A1*x^2*y + A2*x*y + A3*y + A4*x^3 + A5*x^2 + A6*x + A7;
+
+\\\\ Convert to Weierstrass form and compute conductor
+E = ellinit(ellfromeqn(f));
+
+if (E == 0, print("INVALID"), print(ellglobalred(E)[1]));
+quit();
+"""
 
     temp_file = tempname() * ".gp"
     open(temp_file, "w") do f
@@ -683,25 +668,42 @@ function compute_ellap_batch(num::Int64, den::Int64)::Vector{Int}
     Compute ellap(E(t), p) for all primes p < 100
     Returns vector of 25 integers: [a_2, a_3, a_5, ..., a_97]
     Returns zeros on error
+
+    Uses GP/PARI's ellfromeqn to convert Mestre's plane cubic to Weierstrass form
     """
+    t_rat = Rational{Int64}(num, den)
 
-    # Evaluate a4(t) and a6(t)
-    a4_val = eval_a4(num, den)
-    a6_val = eval_a6(num, den)
+    # Evaluate Mestre's polynomials at t
+    A1 = eval_mestre_poly(MESTRE_A1, t_rat)
+    A2 = eval_mestre_poly(MESTRE_A2, t_rat)
+    A3 = eval_mestre_poly(MESTRE_A3, t_rat)
+    A4 = eval_mestre_poly(MESTRE_A4, t_rat)
+    A5 = eval_mestre_poly(MESTRE_A5, t_rat)
+    A6 = eval_mestre_poly(MESTRE_A6, t_rat)
+    A7 = eval_mestre_poly(MESTRE_A7, t_rat)
 
-    a4_num = numerator(a4_val)
-    a4_den = denominator(a4_val)
-    a6_num = numerator(a6_val)
-    a6_den = denominator(a6_val)
-
-    # Create GP script to compute all ellap values
-    # Build the script dynamically with each ellap call
-    ellap_calls = join(["ellap(E,$p)" for p in SMALL_PRIMES], ",")
+    # Create GP script to compute all ellap values from plane cubic
     gp_script = """
-a4=$a4_num/$a4_den;
-a6=$a6_num/$a6_den;
-E=ellinit([0,0,0,a4,a6]);
-print([$ellap_calls]);
+A1=$(numerator(A1))/$(denominator(A1));
+A2=$(numerator(A2))/$(denominator(A2));
+A3=$(numerator(A3))/$(denominator(A3));
+A4=$(numerator(A4))/$(denominator(A4));
+A5=$(numerator(A5))/$(denominator(A5));
+A6=$(numerator(A6))/$(denominator(A6));
+A7=$(numerator(A7))/$(denominator(A7));
+
+\\\\ Affine plane cubic (z=1)
+x='x; y='y;
+f = y^3 + A1*x^2*y + A2*x*y + A3*y + A4*x^3 + A5*x^2 + A6*x + A7;
+
+\\\\ Convert to Weierstrass form
+E = ellinit(ellfromeqn(f));
+
+if (E == 0,
+    print("ERROR"),
+    \\\\ Compute ap values for primes < 100
+    print([ellap(E,2), ellap(E,3), ellap(E,5), ellap(E,7), ellap(E,11), ellap(E,13), ellap(E,17), ellap(E,19), ellap(E,23), ellap(E,29), ellap(E,31), ellap(E,37), ellap(E,41), ellap(E,43), ellap(E,47), ellap(E,53), ellap(E,59), ellap(E,61), ellap(E,67), ellap(E,71), ellap(E,73), ellap(E,79), ellap(E,83), ellap(E,89), ellap(E,97)])
+);
 quit();
 """
 
@@ -715,13 +717,12 @@ quit();
         rm(temp_file)
         result = strip(result)
 
-        if result == "INVALID" || isempty(result)
+        if result == "ERROR" || isempty(result)
             return zeros(Int, 25)
         end
 
         # Parse GP vector output format: [a, b, c, ...]
-        # Remove brackets and split on commas
-        result = replace(result, r"[\[\]]" => "")  # Remove [ and ]
+        result = replace(result, r"[\[\]]" => "")
         ap_values = [parse(Int, strip(s)) for s in split(result, ",")]
 
         # Verify we got exactly 25 values
