@@ -343,14 +343,17 @@ function eval_discriminant_derivative(num::Int64, den::Int64)::BigFloat
     return eval_poly_rational(D_PRIME_COEFFS, num, den)
 end
 
-function eval_mestre_poly(coeffs::Vector{Int}, t_rat::Rational{Int64})::Rational{Int64}
+function eval_mestre_poly(coeffs::Vector{Int}, t_rat::Rational{Int64})::Rational{BigInt}
     """
     Evaluate polynomial at rational t
     Coefficients are in increasing degree order (constant, t, t^2, ...)
+    Uses BigInt to avoid overflow in intermediate calculations
     """
-    result = Rational{Int64}(0)
+    result = Rational{BigInt}(0)
+    # Convert to BigInt to avoid overflow when computing powers
+    t_big = Rational{BigInt}(numerator(t_rat), denominator(t_rat))
     for (i, c) in enumerate(coeffs)
-        result += c * t_rat^(i-1)
+        result += c * t_big^(i-1)
     end
     return result
 end
