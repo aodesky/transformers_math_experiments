@@ -580,7 +580,8 @@ class CharDataset(Dataset):
         return ix
 
     def decode(self, ix):
-        word = ','.join(self.itos[i] for i in ix)
+        # Skip token IDs that don't exist in vocabulary (can happen when vocab changes between generations)
+        word = ','.join(self.itos[i] for i in ix if i in self.itos)
         return word
 
     def __getitem__(self, idx):
