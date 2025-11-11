@@ -36,15 +36,22 @@ function convert_adjmat_to_string(adjmat::Matrix{Int})::String
     return join(entries)
 end
 
-function greedy_search_from_startpoint(db, obj::OBJ_TYPE)::OBJ_TYPE
+function greedy_search_from_startpoint(db, obj::OBJ_TYPE)::Vector{OBJ_TYPE}
     """
-    Main greedy search algorithm. 
-    It starts and ends with some construction 
-    
+    Main greedy search algorithm.
+    It starts and ends with some construction
+
     E.g. input: a graph which may or may not have triangles in it (these are the outputs of the transformer)
     Greedily remove edges to destroy all triangles, then greedily add edges without creating triangles
     Returns final maximal triangle-free graph
     """
+
+    # Validate object length - should be exactly N*(N-1)/2 characters
+    expected_length = N * (N - 1) ÷ 2
+    if length(obj) != expected_length
+        # Invalid input from transformer, return empty to skip processing
+        return OBJ_TYPE[]
+    end
 
     adjmat = zeros(Int, N, N)
 
@@ -148,7 +155,7 @@ function greedy_search_from_startpoint(db, obj::OBJ_TYPE)::OBJ_TYPE
 
 
     end
-    return convert_adjmat_to_string(adjmat)
+    return [convert_adjmat_to_string(adjmat)]
 end
 
 function reward_calc(obj::OBJ_TYPE)::REWARD_TYPE
@@ -166,4 +173,12 @@ function empty_starting_point()::OBJ_TYPE
     (E.g. empty graph, all zeros matrix, etc)
     """
     return "0" ^ (N * (N - 1) ÷ 2 )
+end
+
+function compute_features(obj::OBJ_TYPE)::Vector{Float64}
+    """
+    Compute features for the transformer.
+    For triangle-free graphs, we don't need extra features - the graph itself is sufficient.
+    """
+    return Float64[]
 end
