@@ -211,29 +211,33 @@ function print_db(db)
 end
 
 
-function local_search!(db, lines, start_ind, nb=nb_local_searches)
-    local_search_results_threads = []
-    for j=1:nthreads()
-        push!(local_search_results_threads, [[],[]])
-    end
-    # prepare local search pool
-    count = 0
-    pool = OBJ_TYPE[]
-    append!(pool, lines[start_ind:min(start_ind + nb - 1,length(lines))])
-    # we perform the local searches
-    @threads for obj in pool
-        list_obj, list_rew = local_search_on_object(db, obj)
-        append!(local_search_results_threads[threadid()][1], list_obj)
-        append!(local_search_results_threads[threadid()][2], list_rew)
-    end
-    # we update the dictionaries
-    for j=1:nthreads()
-        # we consider all new graphs found by j-th thread
-        # Remark: a tiny number of graphs could be found by multiple threads, this is not a problem, the function add! will add each graph only once
-        add_db!(db, local_search_results_threads[j][1], local_search_results_threads[j][2])
-    end
-    return nothing
-end
+  function local_search!(db, lines, start_ind, nb=nb_local_searches)
+      # Allocate extra slots to handle threading quirks
+      nt = max(nthreads(), Threads.maxthreadid())
+      local_search_results_threads = []
+      for j=1:nt
+          push!(local_search_results_threads, [[],[]])
+      end
+      # prepare local search pool
+      count = 0
+      pool = OBJ_TYPE[]
+      append!(pool, lines[start_ind:min(start_ind + nb - 1,length(lines))])
+      # we perform the local searches
+      @threads for obj in pool
+          tid = min(threadid(), nt)  # Clamp to valid range
+          list_obj, list_rew = local_search_on_object(db, obj)
+          append!(local_search_results_threads[tid][1], list_obj)
+          append!(local_search_results_threads[tid][2], list_rew)
+      end
+      # we update the dictionaries
+      for j=1:nt
+          # we consider all new graphs found by j-th thread
+          # Remark: a tiny number of graphs could be found by multiple threads, this
+          # is not a problem, the function add! will add each graph only once
+          add_db!(db, local_search_results_threads[j][1], local_search_results_threads[j][2])
+      end
+      return nothing
+  end
 
 
 struct Database
