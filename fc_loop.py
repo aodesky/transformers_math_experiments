@@ -14,6 +14,7 @@ import torch.nn as nn
 from torch.nn import functional as F
 from torch.utils.data import Dataset
 from torch.utils.data.dataloader import DataLoader
+from torch.utils.tensorboard import SummaryWriter
 from dataclasses import dataclass
 from typing import List
 
@@ -318,7 +319,7 @@ if __name__ == '__main__':
     logger.info(f"initializing at generation: {initial_gen}")
     input_file = args.dump_path + f"/search_output_{initial_gen}-tokenized.txt"
     train_dataset, test_dataset = create_datasets(input_file)
-    vocab_size = args.n_tokens + 1
+    vocab_size = train_dataset.get_vocab_size()
     block_size = args.max_output_length + 1
     logger.info(f"dataset determined that: {vocab_size=}, {block_size=}")
 
@@ -347,6 +348,9 @@ if __name__ == '__main__':
         logger.info("resuming from existing model")
         model.load_state_dict(torch.load(model_path))
 
+    # Initialize TensorBoard writer
+    writer = SummaryWriter(os.path.join(args.dump_path, 'tensorboard'))
+    logger.info(f"TensorBoard logging to {os.path.join(args.dump_path, 'tensorboard')}")
 
     for generation in range(initial_gen,args.max_epochs + 1):
         logger.info(f"============ Start of generation {generation} ============")
@@ -400,11 +404,20 @@ if __name__ == '__main__':
             if step % 100 == 0:
                 logger.info(f"step {step} | loss {loss.item():.4f} | step time {(t1-t0)*1000:.2f}ms")
 
+            # TensorBoard logging
+            global_step = (generation - 1) * args.max_steps + step
+            writer.add_scalar('Loss/train_step', loss.item(), global_step)
+
             # evaluate the model
-            if step > 0 and step % 500 == 0:
+            if step > 0 and step % 5 == 0:
                 train_loss = evaluate(model, train_dataset, args.device, batch_size=100, max_batches=10)
                 test_loss  = evaluate(model, test_dataset,  args.device, batch_size=100, max_batches=10)
                 logger.info(f"step {step} train loss: {train_loss} test loss: {test_loss}")
+
+                # TensorBoard logging for evaluation
+                writer.add_scalar('Loss/train_eval', train_loss, global_step)
+                writer.add_scalar('Loss/test_eval', test_loss, global_step)
+
                 # save the model to disk if it has improved
                 if best_loss is None or test_loss < best_loss:
                     out_path = os.path.join(args.dump_path, "model.pt")
@@ -461,10 +474,22 @@ if __name__ == '__main__':
             with open(args.dump_path+"/distribution.txt", 'r') as file:
                 d_lines = file.readlines()
         logger.info("distribution of scores")
+        best_score = None
         for l in d_lines:
             logger.info(l[:-1])
+            # Parse score to log best score to TensorBoard
+            if "Score:" in l:
+                score = float(l.split("Score:")[1].split(",")[0].strip())
+                if best_score is None or score > best_score:
+                    best_score = score
 
-        
+        # Log best score to TensorBoard
+        if best_score is not None:
+            writer.add_scalar('Reward/best_score', best_score, generation)
+
+        # Flush TensorBoard data to disk so it's visible immediately
+        writer.flush()
+
         logger.info("tokenizing")
         tokenize(f"{args.dump_path}/search_output_{generation+1}.txt", args.n_tokens)
         input_file = args.dump_path + f"/search_output_{generation+1}-tokenized.txt"
@@ -474,5 +499,9 @@ if __name__ == '__main__':
         with open(generation_marker_path, 'w') as f:
             f.write(str(generation))
         logger.info(f"Generation {generation} completed successfully")
-        
+
+    # Close TensorBoard writer
+    writer.close()
+    logger.info("TensorBoard logging completed")
+
 
