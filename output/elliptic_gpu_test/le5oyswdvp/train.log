@@ -1,0 +1,329 @@
+INFO - 11/15/25 07:10:19 - 0:00:00 - ============ Initialized logger ============
+INFO - 11/15/25 07:10:19 - 0:00:00 - batch_size: 32
+                                     command: python fc_loop.py --dump_path './output' --exp_name elliptic_gpu_test --num_initial_empty_objects 20 --nb_local_searches 8 --final_database_size 20 --target_db_size 50 --sample-only 20 --max_epochs 5 --max-steps 20 --nb_threads 8 --exp_id "le5oyswdvp"
+                                     cpu: False
+                                     debug: False
+                                     debug_slurm: False
+                                     dump_path: ./output/elliptic_gpu_test/le5oyswdvp
+                                     exp_id: le5oyswdvp
+                                     exp_name: elliptic_gpu_test
+                                     final_database_size: 20
+                                     gen_batch_size: 1000
+                                     global_rank: 0
+                                     is_master: True
+                                     is_slurm_job: False
+                                     learning_rate: 0.0005
+                                     local_rank: 0
+                                     master_port: -1
+                                     max_epochs: 5
+                                     max_output_length: 160
+                                     max_steps: 20
+                                     multi_gpu: False
+                                     multi_node: False
+                                     n_embd: 64
+                                     n_embd2: 32
+                                     n_gpu_per_node: 1
+                                     n_head: 8
+                                     n_layer: 4
+                                     n_nodes: 1
+                                     n_tokens: 100
+                                     nb_local_searches: 8
+                                     nb_threads: 8
+                                     node_id: 0
+                                     num_initial_empty_objects: 20
+                                     num_workers: 8
+                                     sample_only: 20
+                                     seed: -1
+                                     target_db_size: 50
+                                     temperature: 1.0
+                                     top_k: -1
+                                     type: transformer
+                                     weight_decay: 0.01
+                                     world_size: 1
+INFO - 11/15/25 07:10:19 - 0:00:00 - The experiment will be stored in ./output/elliptic_gpu_test/le5oyswdvp
+                                     
+INFO - 11/15/25 07:10:19 - 0:00:00 - Running command: python fc_loop.py --dump_path './output' --exp_name elliptic_gpu_test --num_initial_empty_objects 20 --nb_local_searches 8 --final_database_size 20 --target_db_size 50 --sample-only 20 --max_epochs 5 --max-steps 20 --nb_threads 8
+
+INFO - 11/15/25 07:10:19 - 0:00:00 - seed: 492025541
+INFO - 11/15/25 07:10:19 - 0:00:00 - JULIA_NUM_THREADS is set to 8
+INFO - 11/15/25 07:10:53 - 0:00:34 - Created ./output/elliptic_gpu_test/le5oyswdvp/temp.txt and training tokenizer...
+INFO - 11/15/25 07:10:53 - 0:00:34 - Directory './output/elliptic_gpu_test/le5oyswdvp/tokenizer_data' created.
+INFO - 11/15/25 07:10:53 - 0:00:34 - File './output/elliptic_gpu_test/le5oyswdvp/temp.txt' has been deleted.
+INFO - 11/15/25 07:10:53 - 0:00:34 - 0 / 20
+INFO - 11/15/25 07:10:53 - 0:00:34 - initializing at generation: 1
+INFO - 11/15/25 07:10:53 - 0:00:34 - number of examples in the dataset: 20
+INFO - 11/15/25 07:10:53 - 0:00:34 - max word length: 54
+INFO - 11/15/25 07:10:53 - 0:00:34 - number of unique characters in the vocabulary: 50
+INFO - 11/15/25 07:10:53 - 0:00:34 - vocabulary:
+INFO - 11/15/25 07:10:53 - 0:00:34 - ['V0', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9', 'V10', 'V11', 'V12', 'V13', 'V14', 'V15', 'V16', 'V17', 'V18', 'V19', 'V20', 'V21', 'V22', 'V23', 'V24', 'V25', 'V26', 'V27', 'V28', 'V29', 'V30', 'V31', 'V32', 'V33', 'V34', 'V35', 'V36', 'V37', 'V38', 'V39', 'V40', 'V41', 'V42', 'V43', 'V44', 'V45', 'V46', 'V47', 'V48', 'V49']
+INFO - 11/15/25 07:10:53 - 0:00:34 - split up the dataset into 18 training examples and 2 test examples
+INFO - 11/15/25 07:10:53 - 0:00:34 - dataset determined that: vocab_size=51, block_size=161
+INFO - 11/15/25 07:10:53 - 0:00:35 - model #params: 216896
+INFO - 11/15/25 07:10:53 - 0:00:35 - TensorBoard logging to ./output/elliptic_gpu_test/le5oyswdvp/tensorboard
+INFO - 11/15/25 07:10:53 - 0:00:35 - ============ Start of generation 1 ============
+INFO - 11/15/25 07:10:53 - 0:00:35 - Memory allocated:  1.23MB, reserved: 2.00MB
+INFO - 11/15/25 07:10:53 - 0:00:35 - training
+INFO - 11/15/25 07:10:56 - 0:00:37 - step 0 | loss 3.9773 | step time 756.25ms
+INFO - 11/15/25 07:10:56 - 0:00:38 - step 5 train loss: 3.174750804901123 test loss: 3.2139058113098145
+INFO - 11/15/25 07:10:56 - 0:00:38 - test loss 3.2139058113098145 is the best so far, saving model to ./output/elliptic_gpu_test/le5oyswdvp/model.pt
+INFO - 11/15/25 07:10:56 - 0:00:38 - step 10 train loss: 2.760153293609619 test loss: 2.8165385723114014
+INFO - 11/15/25 07:10:56 - 0:00:38 - test loss 2.8165385723114014 is the best so far, saving model to ./output/elliptic_gpu_test/le5oyswdvp/model.pt
+INFO - 11/15/25 07:10:57 - 0:00:38 - step 15 train loss: 2.52532958984375 test loss: 2.5864102840423584
+INFO - 11/15/25 07:10:57 - 0:00:38 - test loss 2.5864102840423584 is the best so far, saving model to ./output/elliptic_gpu_test/le5oyswdvp/model.pt
+INFO - 11/15/25 07:10:57 - 0:00:38 - Memory allocated:  21.20MB, reserved: 350.00MB
+INFO - 11/15/25 07:10:57 - 0:00:38 - generating
+INFO - 11/15/25 07:10:58 - 0:00:39 - distribution of sample lengths: average: 187.55 max: 555
+INFO - 11/15/25 07:10:58 - 0:00:39 - decoding
+INFO - 11/15/25 07:10:58 - 0:00:39 - Decoded 40 sequences, extracted 32 valid rationals
+INFO - 11/15/25 07:10:58 - 0:00:39 - Decoding complete. Check the output in ./output/elliptic_gpu_test/le5oyswdvp/transformer-output-decoded.txt
+INFO - 11/15/25 07:10:58 - 0:00:39 - Memory allocated:  21.20MB, reserved: 350.00MB
+INFO - 11/15/25 07:10:58 - 0:00:39 - ============ End of generation 1 ============
+INFO - 11/15/25 07:10:58 - 0:00:39 - launching search.jl
+INFO - 11/15/25 07:10:58 - 0:00:39 - JULIA_NUM_THREADS is set to 8
+INFO - 11/15/25 07:11:34 - 0:01:15 - distribution of scores
+INFO - 11/15/25 07:11:34 - 0:01:15 - Score: -43.668274, Count: 32
+INFO - 11/15/25 07:11:34 - 0:01:15 - Score: -52.289013, Count: 1
+INFO - 11/15/25 07:11:34 - 0:01:15 - Score: -100.903114, Count: 1
+INFO - 11/15/25 07:11:34 - 0:01:15 - Score: -108.82764, Count: 1
+INFO - 11/15/25 07:11:34 - 0:01:15 - Score: -113.49175, Count: 1
+INFO - 11/15/25 07:11:34 - 0:01:15 - Score: -131.2285, Count: 1
+INFO - 11/15/25 07:11:34 - 0:01:15 - Score: -136.7772, Count: 1
+INFO - 11/15/25 07:11:34 - 0:01:15 - Score: -166.7795, Count: 1
+INFO - 11/15/25 07:11:34 - 0:01:15 - Score: -171.77296, Count: 1
+INFO - 11/15/25 07:11:34 - 0:01:15 - Score: -173.06514, Count: 1
+INFO - 11/15/25 07:11:34 - 0:01:15 - Score: -186.4962, Count: 1
+INFO - 11/15/25 07:11:34 - 0:01:15 - Score: -195.13658, Count: 1
+INFO - 11/15/25 07:11:34 - 0:01:15 - Score: -196.80307, Count: 1
+INFO - 11/15/25 07:11:34 - 0:01:15 - Score: -206.90149, Count: 1
+INFO - 11/15/25 07:11:34 - 0:01:15 - Score: -208.99864, Count: 1
+INFO - 11/15/25 07:11:34 - 0:01:15 - Score: -1.0e9, Count: 9
+INFO - 11/15/25 07:11:34 - 0:01:15 - tokenizing
+INFO - 11/15/25 07:11:34 - 0:01:15 - Loading tokenizer from ./output/elliptic_gpu_test/le5oyswdvp/tokenizer_data/tokenizer.json...
+INFO - 11/15/25 07:11:34 - 0:01:15 - 0 / 20
+INFO - 11/15/25 07:11:34 - 0:01:15 - number of examples in the dataset: 20
+INFO - 11/15/25 07:11:34 - 0:01:15 - max word length: 56
+INFO - 11/15/25 07:11:34 - 0:01:15 - number of unique characters in the vocabulary: 35
+INFO - 11/15/25 07:11:34 - 0:01:15 - vocabulary:
+INFO - 11/15/25 07:11:34 - 0:01:15 - ['V0', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9', 'V10', 'V11', 'V12', 'V13', 'V14', 'V15', 'V16', 'V17', 'V18', 'V19', 'V20', 'V21', 'V22', 'V24', 'V25', 'V26', 'V27', 'V28', 'V29', 'V30', 'V32', 'V33', 'V42', 'V44', 'V45']
+INFO - 11/15/25 07:11:34 - 0:01:15 - split up the dataset into 18 training examples and 2 test examples
+INFO - 11/15/25 07:11:34 - 0:01:15 - Generation 1 completed successfully
+INFO - 11/15/25 07:11:34 - 0:01:15 - ============ Start of generation 2 ============
+INFO - 11/15/25 07:11:34 - 0:01:15 - Memory allocated:  21.20MB, reserved: 350.00MB
+INFO - 11/15/25 07:11:34 - 0:01:15 - training
+INFO - 11/15/25 07:11:34 - 0:01:16 - step 0 | loss 2.4643 | step time 57.49ms
+INFO - 11/15/25 07:11:35 - 0:01:16 - step 5 train loss: 2.2158186435699463 test loss: 2.129319906234741
+INFO - 11/15/25 07:11:35 - 0:01:16 - test loss 2.129319906234741 is the best so far, saving model to ./output/elliptic_gpu_test/le5oyswdvp/model.pt
+INFO - 11/15/25 07:11:35 - 0:01:16 - step 10 train loss: 2.0631659030914307 test loss: 2.0067946910858154
+INFO - 11/15/25 07:11:35 - 0:01:16 - test loss 2.0067946910858154 is the best so far, saving model to ./output/elliptic_gpu_test/le5oyswdvp/model.pt
+INFO - 11/15/25 07:11:35 - 0:01:16 - step 15 train loss: 1.962110161781311 test loss: 1.9526127576828003
+INFO - 11/15/25 07:11:35 - 0:01:16 - test loss 1.9526127576828003 is the best so far, saving model to ./output/elliptic_gpu_test/le5oyswdvp/model.pt
+INFO - 11/15/25 07:11:35 - 0:01:16 - Memory allocated:  21.20MB, reserved: 350.00MB
+INFO - 11/15/25 07:11:35 - 0:01:16 - generating
+INFO - 11/15/25 07:11:36 - 0:01:17 - distribution of sample lengths: average: 220.0 max: 511
+INFO - 11/15/25 07:11:36 - 0:01:17 - decoding
+INFO - 11/15/25 07:11:36 - 0:01:17 - Decoded 40 sequences, extracted 38 valid rationals
+INFO - 11/15/25 07:11:36 - 0:01:17 - Decoding complete. Check the output in ./output/elliptic_gpu_test/le5oyswdvp/transformer-output-decoded.txt
+INFO - 11/15/25 07:11:36 - 0:01:17 - Memory allocated:  21.20MB, reserved: 350.00MB
+INFO - 11/15/25 07:11:36 - 0:01:17 - ============ End of generation 2 ============
+INFO - 11/15/25 07:11:36 - 0:01:17 - launching search.jl
+INFO - 11/15/25 07:11:36 - 0:01:17 - JULIA_NUM_THREADS is set to 8
+INFO - 11/15/25 07:12:19 - 0:02:00 - distribution of scores
+INFO - 11/15/25 07:12:19 - 0:02:00 - Score: -43.668274, Count: 37
+INFO - 11/15/25 07:12:19 - 0:02:00 - Score: -52.289013, Count: 1
+INFO - 11/15/25 07:12:19 - 0:02:00 - Score: -66.407074, Count: 1
+INFO - 11/15/25 07:12:19 - 0:02:00 - Score: -110.134445, Count: 1
+INFO - 11/15/25 07:12:19 - 0:02:00 - Score: -131.2285, Count: 1
+INFO - 11/15/25 07:12:19 - 0:02:00 - Score: -147.08012, Count: 1
+INFO - 11/15/25 07:12:19 - 0:02:00 - Score: -168.05672, Count: 1
+INFO - 11/15/25 07:12:19 - 0:02:00 - Score: -169.50656, Count: 1
+INFO - 11/15/25 07:12:19 - 0:02:00 - Score: -171.77296, Count: 1
+INFO - 11/15/25 07:12:19 - 0:02:00 - Score: -179.24745, Count: 1
+INFO - 11/15/25 07:12:19 - 0:02:00 - Score: -185.60413, Count: 1
+INFO - 11/15/25 07:12:19 - 0:02:00 - Score: -186.26428, Count: 1
+INFO - 11/15/25 07:12:19 - 0:02:00 - Score: -196.00208, Count: 1
+INFO - 11/15/25 07:12:19 - 0:02:00 - Score: -197.05255, Count: 1
+INFO - 11/15/25 07:12:19 - 0:02:00 - Score: -202.00919, Count: 1
+INFO - 11/15/25 07:12:19 - 0:02:00 - Score: -202.3005, Count: 1
+INFO - 11/15/25 07:12:19 - 0:02:00 - Score: -207.04108, Count: 1
+INFO - 11/15/25 07:12:19 - 0:02:00 - Score: -208.31027, Count: 1
+INFO - 11/15/25 07:12:19 - 0:02:00 - Score: -211.72125, Count: 1
+INFO - 11/15/25 07:12:19 - 0:02:00 - Score: -226.05995, Count: 1
+INFO - 11/15/25 07:12:19 - 0:02:00 - Score: -1.0e9, Count: 5
+INFO - 11/15/25 07:12:19 - 0:02:00 - tokenizing
+INFO - 11/15/25 07:12:19 - 0:02:00 - Loading tokenizer from ./output/elliptic_gpu_test/le5oyswdvp/tokenizer_data/tokenizer.json...
+INFO - 11/15/25 07:12:19 - 0:02:00 - 0 / 20
+INFO - 11/15/25 07:12:19 - 0:02:00 - number of examples in the dataset: 20
+INFO - 11/15/25 07:12:19 - 0:02:00 - max word length: 56
+INFO - 11/15/25 07:12:19 - 0:02:00 - number of unique characters in the vocabulary: 33
+INFO - 11/15/25 07:12:19 - 0:02:00 - vocabulary:
+INFO - 11/15/25 07:12:19 - 0:02:00 - ['V0', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9', 'V10', 'V11', 'V12', 'V13', 'V14', 'V15', 'V16', 'V17', 'V18', 'V19', 'V20', 'V22', 'V23', 'V24', 'V27', 'V29', 'V30', 'V31', 'V32', 'V33', 'V34', 'V38', 'V44']
+INFO - 11/15/25 07:12:19 - 0:02:00 - split up the dataset into 18 training examples and 2 test examples
+INFO - 11/15/25 07:12:19 - 0:02:00 - Generation 2 completed successfully
+INFO - 11/15/25 07:12:19 - 0:02:00 - ============ Start of generation 3 ============
+INFO - 11/15/25 07:12:19 - 0:02:00 - Memory allocated:  21.20MB, reserved: 350.00MB
+INFO - 11/15/25 07:12:19 - 0:02:00 - training
+INFO - 11/15/25 07:12:19 - 0:02:00 - step 0 | loss 1.9648 | step time 61.22ms
+INFO - 11/15/25 07:12:19 - 0:02:00 - step 5 train loss: 1.8430004119873047 test loss: 1.905337929725647
+INFO - 11/15/25 07:12:19 - 0:02:00 - test loss 1.905337929725647 is the best so far, saving model to ./output/elliptic_gpu_test/le5oyswdvp/model.pt
+INFO - 11/15/25 07:12:19 - 0:02:01 - step 10 train loss: 1.7683818340301514 test loss: 1.8474571704864502
+INFO - 11/15/25 07:12:19 - 0:02:01 - test loss 1.8474571704864502 is the best so far, saving model to ./output/elliptic_gpu_test/le5oyswdvp/model.pt
+INFO - 11/15/25 07:12:20 - 0:02:01 - step 15 train loss: 1.7010999917984009 test loss: 1.8095451593399048
+INFO - 11/15/25 07:12:20 - 0:02:01 - test loss 1.8095451593399048 is the best so far, saving model to ./output/elliptic_gpu_test/le5oyswdvp/model.pt
+INFO - 11/15/25 07:12:20 - 0:02:01 - Memory allocated:  21.20MB, reserved: 350.00MB
+INFO - 11/15/25 07:12:20 - 0:02:01 - generating
+INFO - 11/15/25 07:12:21 - 0:02:02 - distribution of sample lengths: average: 229.6 max: 523
+INFO - 11/15/25 07:12:21 - 0:02:02 - decoding
+INFO - 11/15/25 07:12:21 - 0:02:02 - Decoded 40 sequences, extracted 40 valid rationals
+INFO - 11/15/25 07:12:21 - 0:02:02 - Decoding complete. Check the output in ./output/elliptic_gpu_test/le5oyswdvp/transformer-output-decoded.txt
+INFO - 11/15/25 07:12:21 - 0:02:02 - Memory allocated:  21.20MB, reserved: 350.00MB
+INFO - 11/15/25 07:12:21 - 0:02:02 - ============ End of generation 3 ============
+INFO - 11/15/25 07:12:21 - 0:02:02 - launching search.jl
+INFO - 11/15/25 07:12:21 - 0:02:02 - JULIA_NUM_THREADS is set to 8
+INFO - 11/15/25 07:12:59 - 0:02:40 - distribution of scores
+INFO - 11/15/25 07:12:59 - 0:02:40 - Score: -43.668274, Count: 29
+INFO - 11/15/25 07:12:59 - 0:02:40 - Score: -52.289013, Count: 1
+INFO - 11/15/25 07:12:59 - 0:02:40 - Score: -66.407074, Count: 1
+INFO - 11/15/25 07:12:59 - 0:02:40 - Score: -93.01708, Count: 1
+INFO - 11/15/25 07:12:59 - 0:02:40 - Score: -100.903114, Count: 1
+INFO - 11/15/25 07:12:59 - 0:02:40 - Score: -124.72995, Count: 1
+INFO - 11/15/25 07:12:59 - 0:02:40 - Score: -130.36163, Count: 1
+INFO - 11/15/25 07:12:59 - 0:02:40 - Score: -131.68716, Count: 1
+INFO - 11/15/25 07:12:59 - 0:02:40 - Score: -137.28052, Count: 1
+INFO - 11/15/25 07:12:59 - 0:02:40 - Score: -139.4508, Count: 1
+INFO - 11/15/25 07:12:59 - 0:02:40 - Score: -154.6279, Count: 1
+INFO - 11/15/25 07:12:59 - 0:02:40 - Score: -155.19257, Count: 1
+INFO - 11/15/25 07:12:59 - 0:02:40 - Score: -158.45074, Count: 1
+INFO - 11/15/25 07:12:59 - 0:02:40 - Score: -160.74234, Count: 1
+INFO - 11/15/25 07:12:59 - 0:02:40 - Score: -163.02457, Count: 1
+INFO - 11/15/25 07:12:59 - 0:02:40 - Score: -163.50963, Count: 1
+INFO - 11/15/25 07:12:59 - 0:02:40 - Score: -167.82523, Count: 1
+INFO - 11/15/25 07:12:59 - 0:02:40 - Score: -169.9701, Count: 1
+INFO - 11/15/25 07:12:59 - 0:02:40 - Score: -171.60014, Count: 1
+INFO - 11/15/25 07:12:59 - 0:02:40 - Score: -172.11896, Count: 1
+INFO - 11/15/25 07:12:59 - 0:02:40 - Score: -178.30128, Count: 1
+INFO - 11/15/25 07:12:59 - 0:02:40 - Score: -179.66394, Count: 1
+INFO - 11/15/25 07:12:59 - 0:02:40 - Score: -185.2828, Count: 1
+INFO - 11/15/25 07:12:59 - 0:02:40 - Score: -186.32214, Count: 1
+INFO - 11/15/25 07:12:59 - 0:02:40 - Score: -188.05661, Count: 1
+INFO - 11/15/25 07:12:59 - 0:02:40 - Score: -195.11284, Count: 1
+INFO - 11/15/25 07:12:59 - 0:02:40 - Score: -208.31027, Count: 1
+INFO - 11/15/25 07:12:59 - 0:02:40 - Score: -209.74393, Count: 1
+INFO - 11/15/25 07:12:59 - 0:02:40 - Score: -214.2192, Count: 1
+INFO - 11/15/25 07:12:59 - 0:02:40 - Score: -221.07513, Count: 1
+INFO - 11/15/25 07:12:59 - 0:02:40 - Score: -223.4397, Count: 1
+INFO - 11/15/25 07:12:59 - 0:02:40 - Score: -227.64832, Count: 1
+INFO - 11/15/25 07:12:59 - 0:02:40 - Score: -1.0e9, Count: 2
+INFO - 11/15/25 07:12:59 - 0:02:40 - tokenizing
+INFO - 11/15/25 07:12:59 - 0:02:40 - Loading tokenizer from ./output/elliptic_gpu_test/le5oyswdvp/tokenizer_data/tokenizer.json...
+INFO - 11/15/25 07:12:59 - 0:02:40 - 0 / 20
+INFO - 11/15/25 07:12:59 - 0:02:40 - number of examples in the dataset: 20
+INFO - 11/15/25 07:12:59 - 0:02:40 - max word length: 56
+INFO - 11/15/25 07:12:59 - 0:02:40 - number of unique characters in the vocabulary: 30
+INFO - 11/15/25 07:12:59 - 0:02:40 - vocabulary:
+INFO - 11/15/25 07:12:59 - 0:02:40 - ['V0', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9', 'V10', 'V11', 'V12', 'V13', 'V14', 'V15', 'V16', 'V17', 'V18', 'V19', 'V20', 'V21', 'V22', 'V24', 'V27', 'V30', 'V31', 'V32', 'V44', 'V48']
+INFO - 11/15/25 07:12:59 - 0:02:40 - split up the dataset into 18 training examples and 2 test examples
+INFO - 11/15/25 07:12:59 - 0:02:40 - Generation 3 completed successfully
+INFO - 11/15/25 07:12:59 - 0:02:40 - ============ Start of generation 4 ============
+INFO - 11/15/25 07:12:59 - 0:02:40 - Memory allocated:  21.20MB, reserved: 350.00MB
+INFO - 11/15/25 07:12:59 - 0:02:40 - training
+INFO - 11/15/25 07:12:59 - 0:02:40 - step 0 | loss 1.7359 | step time 56.76ms
+INFO - 11/15/25 07:12:59 - 0:02:41 - step 5 train loss: 1.6498849391937256 test loss: 1.6984080076217651
+INFO - 11/15/25 07:12:59 - 0:02:41 - test loss 1.6984080076217651 is the best so far, saving model to ./output/elliptic_gpu_test/le5oyswdvp/model.pt
+INFO - 11/15/25 07:12:59 - 0:02:41 - step 10 train loss: 1.5861115455627441 test loss: 1.6742143630981445
+INFO - 11/15/25 07:12:59 - 0:02:41 - test loss 1.6742143630981445 is the best so far, saving model to ./output/elliptic_gpu_test/le5oyswdvp/model.pt
+INFO - 11/15/25 07:13:00 - 0:02:41 - step 15 train loss: 1.5270054340362549 test loss: 1.6382399797439575
+INFO - 11/15/25 07:13:00 - 0:02:41 - test loss 1.6382399797439575 is the best so far, saving model to ./output/elliptic_gpu_test/le5oyswdvp/model.pt
+INFO - 11/15/25 07:13:00 - 0:02:41 - Memory allocated:  21.20MB, reserved: 350.00MB
+INFO - 11/15/25 07:13:00 - 0:02:41 - generating
+INFO - 11/15/25 07:13:01 - 0:02:42 - distribution of sample lengths: average: 199.3 max: 535
+INFO - 11/15/25 07:13:01 - 0:02:42 - decoding
+INFO - 11/15/25 07:13:01 - 0:02:42 - Decoded 40 sequences, extracted 39 valid rationals
+INFO - 11/15/25 07:13:01 - 0:02:42 - Decoding complete. Check the output in ./output/elliptic_gpu_test/le5oyswdvp/transformer-output-decoded.txt
+INFO - 11/15/25 07:13:01 - 0:02:42 - Memory allocated:  21.20MB, reserved: 350.00MB
+INFO - 11/15/25 07:13:01 - 0:02:42 - ============ End of generation 4 ============
+INFO - 11/15/25 07:13:01 - 0:02:42 - launching search.jl
+INFO - 11/15/25 07:13:01 - 0:02:42 - JULIA_NUM_THREADS is set to 8
+INFO - 11/15/25 07:13:40 - 0:03:22 - distribution of scores
+INFO - 11/15/25 07:13:40 - 0:03:22 - Score: -43.668274, Count: 37
+INFO - 11/15/25 07:13:40 - 0:03:22 - Score: -52.289013, Count: 1
+INFO - 11/15/25 07:13:40 - 0:03:22 - Score: -60.588486, Count: 1
+INFO - 11/15/25 07:13:40 - 0:03:22 - Score: -66.407074, Count: 1
+INFO - 11/15/25 07:13:40 - 0:03:22 - Score: -107.24029, Count: 1
+INFO - 11/15/25 07:13:40 - 0:03:22 - Score: -125.620544, Count: 1
+INFO - 11/15/25 07:13:40 - 0:03:22 - Score: -130.36163, Count: 1
+INFO - 11/15/25 07:13:40 - 0:03:22 - Score: -131.2285, Count: 1
+INFO - 11/15/25 07:13:40 - 0:03:22 - Score: -136.7772, Count: 1
+INFO - 11/15/25 07:13:40 - 0:03:22 - Score: -145.76451, Count: 1
+INFO - 11/15/25 07:13:40 - 0:03:22 - Score: -171.77296, Count: 1
+INFO - 11/15/25 07:13:40 - 0:03:22 - Score: -172.95248, Count: 1
+INFO - 11/15/25 07:13:40 - 0:03:22 - Score: -179.20702, Count: 1
+INFO - 11/15/25 07:13:40 - 0:03:22 - Score: -197.01918, Count: 1
+INFO - 11/15/25 07:13:40 - 0:03:22 - Score: -197.6693, Count: 1
+INFO - 11/15/25 07:13:40 - 0:03:22 - Score: -198.40704, Count: 1
+INFO - 11/15/25 07:13:40 - 0:03:22 - Score: -198.51634, Count: 1
+INFO - 11/15/25 07:13:40 - 0:03:22 - Score: -212.73186, Count: 1
+INFO - 11/15/25 07:13:40 - 0:03:22 - Score: -1.0e9, Count: 5
+INFO - 11/15/25 07:13:40 - 0:03:22 - tokenizing
+INFO - 11/15/25 07:13:40 - 0:03:22 - Loading tokenizer from ./output/elliptic_gpu_test/le5oyswdvp/tokenizer_data/tokenizer.json...
+INFO - 11/15/25 07:13:40 - 0:03:22 - 0 / 20
+INFO - 11/15/25 07:13:40 - 0:03:22 - number of examples in the dataset: 20
+INFO - 11/15/25 07:13:40 - 0:03:22 - max word length: 57
+INFO - 11/15/25 07:13:40 - 0:03:22 - number of unique characters in the vocabulary: 32
+INFO - 11/15/25 07:13:40 - 0:03:22 - vocabulary:
+INFO - 11/15/25 07:13:40 - 0:03:22 - ['V0', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9', 'V10', 'V11', 'V12', 'V13', 'V14', 'V15', 'V16', 'V17', 'V18', 'V19', 'V20', 'V21', 'V22', 'V24', 'V25', 'V27', 'V29', 'V30', 'V32', 'V33', 'V34', 'V43']
+INFO - 11/15/25 07:13:40 - 0:03:22 - split up the dataset into 18 training examples and 2 test examples
+INFO - 11/15/25 07:13:40 - 0:03:22 - Generation 4 completed successfully
+INFO - 11/15/25 07:13:40 - 0:03:22 - ============ Start of generation 5 ============
+INFO - 11/15/25 07:13:40 - 0:03:22 - Memory allocated:  21.20MB, reserved: 350.00MB
+INFO - 11/15/25 07:13:40 - 0:03:22 - training
+INFO - 11/15/25 07:13:41 - 0:03:22 - step 0 | loss 1.6628 | step time 57.06ms
+INFO - 11/15/25 07:13:41 - 0:03:22 - step 5 train loss: 1.5441616773605347 test loss: 1.4995609521865845
+INFO - 11/15/25 07:13:41 - 0:03:22 - test loss 1.4995609521865845 is the best so far, saving model to ./output/elliptic_gpu_test/le5oyswdvp/model.pt
+INFO - 11/15/25 07:13:41 - 0:03:22 - step 10 train loss: 1.491021752357483 test loss: 1.4825462102890015
+INFO - 11/15/25 07:13:41 - 0:03:22 - test loss 1.4825462102890015 is the best so far, saving model to ./output/elliptic_gpu_test/le5oyswdvp/model.pt
+INFO - 11/15/25 07:13:41 - 0:03:23 - step 15 train loss: 1.446295142173767 test loss: 1.4662833213806152
+INFO - 11/15/25 07:13:41 - 0:03:23 - test loss 1.4662833213806152 is the best so far, saving model to ./output/elliptic_gpu_test/le5oyswdvp/model.pt
+INFO - 11/15/25 07:13:41 - 0:03:23 - Memory allocated:  21.20MB, reserved: 350.00MB
+INFO - 11/15/25 07:13:41 - 0:03:23 - generating
+INFO - 11/15/25 07:13:43 - 0:03:24 - distribution of sample lengths: average: 198.55 max: 472
+INFO - 11/15/25 07:13:43 - 0:03:24 - decoding
+INFO - 11/15/25 07:13:43 - 0:03:24 - Decoded 40 sequences, extracted 40 valid rationals
+INFO - 11/15/25 07:13:43 - 0:03:24 - Decoding complete. Check the output in ./output/elliptic_gpu_test/le5oyswdvp/transformer-output-decoded.txt
+INFO - 11/15/25 07:13:43 - 0:03:24 - Memory allocated:  21.20MB, reserved: 350.00MB
+INFO - 11/15/25 07:13:43 - 0:03:24 - ============ End of generation 5 ============
+INFO - 11/15/25 07:13:43 - 0:03:24 - launching search.jl
+INFO - 11/15/25 07:13:43 - 0:03:24 - JULIA_NUM_THREADS is set to 8
+INFO - 11/15/25 07:14:23 - 0:04:04 - distribution of scores
+INFO - 11/15/25 07:14:23 - 0:04:04 - Score: -43.668274, Count: 37
+INFO - 11/15/25 07:14:23 - 0:04:04 - Score: -52.289013, Count: 1
+INFO - 11/15/25 07:14:23 - 0:04:04 - Score: -60.588486, Count: 1
+INFO - 11/15/25 07:14:23 - 0:04:04 - Score: -66.407074, Count: 1
+INFO - 11/15/25 07:14:23 - 0:04:04 - Score: -117.997345, Count: 1
+INFO - 11/15/25 07:14:23 - 0:04:04 - Score: -130.36163, Count: 1
+INFO - 11/15/25 07:14:23 - 0:04:04 - Score: -131.2285, Count: 1
+INFO - 11/15/25 07:14:23 - 0:04:04 - Score: -139.4508, Count: 1
+INFO - 11/15/25 07:14:23 - 0:04:04 - Score: -149.05302, Count: 1
+INFO - 11/15/25 07:14:23 - 0:04:04 - Score: -158.45074, Count: 1
+INFO - 11/15/25 07:14:23 - 0:04:04 - Score: -160.74234, Count: 1
+INFO - 11/15/25 07:14:23 - 0:04:04 - Score: -164.1383, Count: 1
+INFO - 11/15/25 07:14:23 - 0:04:04 - Score: -168.24356, Count: 1
+INFO - 11/15/25 07:14:23 - 0:04:04 - Score: -177.2989, Count: 1
+INFO - 11/15/25 07:14:23 - 0:04:04 - Score: -181.46849, Count: 1
+INFO - 11/15/25 07:14:23 - 0:04:04 - Score: -186.00462, Count: 1
+INFO - 11/15/25 07:14:23 - 0:04:04 - Score: -187.13608, Count: 1
+INFO - 11/15/25 07:14:23 - 0:04:04 - Score: -192.26083, Count: 1
+INFO - 11/15/25 07:14:23 - 0:04:04 - Score: -198.51634, Count: 1
+INFO - 11/15/25 07:14:23 - 0:04:04 - Score: -201.45337, Count: 1
+INFO - 11/15/25 07:14:23 - 0:04:04 - Score: -220.10014, Count: 1
+INFO - 11/15/25 07:14:23 - 0:04:04 - Score: -1.0e9, Count: 4
+INFO - 11/15/25 07:14:23 - 0:04:04 - tokenizing
+INFO - 11/15/25 07:14:23 - 0:04:04 - Loading tokenizer from ./output/elliptic_gpu_test/le5oyswdvp/tokenizer_data/tokenizer.json...
+INFO - 11/15/25 07:14:23 - 0:04:04 - 0 / 20
+INFO - 11/15/25 07:14:23 - 0:04:04 - number of examples in the dataset: 20
+INFO - 11/15/25 07:14:23 - 0:04:04 - max word length: 56
+INFO - 11/15/25 07:14:23 - 0:04:04 - number of unique characters in the vocabulary: 31
+INFO - 11/15/25 07:14:23 - 0:04:04 - vocabulary:
+INFO - 11/15/25 07:14:23 - 0:04:04 - ['V0', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9', 'V10', 'V11', 'V12', 'V13', 'V14', 'V15', 'V16', 'V17', 'V18', 'V19', 'V20', 'V21', 'V22', 'V25', 'V29', 'V30', 'V34', 'V35', 'V43', 'V44', 'V45']
+INFO - 11/15/25 07:14:23 - 0:04:04 - split up the dataset into 18 training examples and 2 test examples
+INFO - 11/15/25 07:14:23 - 0:04:04 - Generation 5 completed successfully
+INFO - 11/15/25 07:14:23 - 0:04:04 - TensorBoard logging completed
