@@ -137,6 +137,12 @@ python3 fc_loop.py \
   --nb_threads 4
 ```
 
+Here's the command for a toy run to check the pipeline works:
+
+```bash
+python3 fc_loop.py     --dump_path ./output     --exp_name elliptic_gpu_test     --num_initial_empty_objects 20     --nb_local_searches 8     --final_database_size 20     --target_db_size 50     --sample-only 20     --max_epochs 5     --max-steps 20     --nb_threads 8
+```
+
 **Key Parameters:**
 - `--dump_path`: Output directory
 - `--exp_name`: Experiment name
