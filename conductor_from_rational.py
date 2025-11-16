@@ -17,6 +17,7 @@ R = PolynomialRing(QQ, 't')
 t = R.gen()
 
 CONDUCTOR_TIMEOUT = 60  # seconds  
+BIG_LOG_CONDUCTOR = 1000 # large value to represent timeout
 
 # The following are from Mestre's paper
 a1 = [-26940, 51220, -26940]
@@ -54,9 +55,8 @@ def conductor_from_rational(X):
             return RR(log(conductor))
     except AlarmInterrupt as e:
         print(f"Timeout on X={X}, skipping.")
-        return -log(0)
+        return RR(BIG_LOG_CONDUCTOR)
 
-    return RR(log(conductor))
 
 if __name__ == "__main__":
     # Example usage
