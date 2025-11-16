@@ -51,9 +51,10 @@ def conductor_from_rational(X):
             Epari = pari.ellinit(ainvs)  # cypari2 call, no gp/pexpect involved
             red = pari.ellglobalred(Epari)
             conductor = ZZ(red[0])       # first entry is the conductor
+            return RR(log(conductor))
     except AlarmInterrupt as e:
         print(f"Timeout on X={X}, skipping.")
-        conductor = ZZ(0)
+        return -log(0)
 
     return RR(log(conductor))
 
