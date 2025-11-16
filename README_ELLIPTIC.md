@@ -143,6 +143,22 @@ Here's the command for a toy run to check the pipeline works:
 python3 fc_loop.py     --dump_path ./output     --exp_name elliptic_gpu_test     --num_initial_empty_objects 20     --nb_local_searches 8     --final_database_size 20     --target_db_size 50     --sample-only 20     --max_epochs 5     --max-steps 20     --nb_threads 8
 ```
 
+Here's the command for a proper run on a GPU:
+
+```bash
+python3 fc_loop.py \
+    --dump_path ./output \
+    --exp_name elliptic_big_run \
+    --num_initial_empty_objects 3054 \
+    --nb_local_searches 150 \
+    --final_database_size 5000 \
+    --target_db_size 20000 \
+    --sample-only 10000 \
+    --max_epochs 10 \
+    --max-steps 2000 \
+    --nb_threads 8
+```
+
 **Key Parameters:**
 - `--dump_path`: Output directory
 - `--exp_name`: Experiment name
