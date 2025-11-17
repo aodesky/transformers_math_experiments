@@ -16,7 +16,7 @@ class pari_alarm:
 R = PolynomialRing(QQ, 't')
 t = R.gen()
 
-CONDUCTOR_TIMEOUT = 60  # seconds  
+CONDUCTOR_TIMEOUT = 3  # seconds  
 BIG_LOG_CONDUCTOR = 1000 # large value to represent timeout
 
 # The following are from Mestre's paper

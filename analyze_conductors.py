@@ -35,13 +35,14 @@ def main():
     print()
 
     # Part 1: Initial dataset
-    print("PART 1: Initial Dataset (elliptic_input_small.txt)")
+    print("PART 1: Initial Dataset (elliptic_input_with_fourier_coefficients.txt)")
     print("-" * 80)
 
-    initial_file = "elliptic_input_small.txt"
+    initial_file = "elliptic_input_with_fourier_coefficients.txt"
     initial_rationals = extract_rationals_from_file(initial_file)
 
     print(f"Found {len(initial_rationals)} rationals in initial dataset")
+    print("Computing conductors (this may take a while)...")
     print()
 
     initial_results = []
@@ -53,18 +54,21 @@ def main():
                 'rational': rational_str,
                 'log_conductor': float(log_conductor)
             })
-            print(f"  [{i}/{len(initial_rationals)}] t = {rational_str:>10s} : log(C) = {log_conductor:.6f}")
+            if i % 100 == 0:
+                print(f"  Processed {i}/{len(initial_rationals)} rationals...")
         except Exception as e:
             print(f"  [{i}/{len(initial_rationals)}] t = {rational_str:>10s} : ERROR - {e}")
 
+    print(f"Completed processing {len(initial_results)} rationals from initial dataset")
     print()
 
-    # Part 2: PatternBoost results
-    print("PART 2: PatternBoost Search Outputs")
+    # Part 2: PatternBoost results - analyze by generation
+    print("PART 2: PatternBoost Search Outputs - Top 5 per Generation")
     print("-" * 80)
 
-    output_dir = "./output/elliptic_gpu_test/le5oyswdvp"
+    output_dir = "./output/elliptic_big_run/a6jmms42lu"
     all_pb_rationals = []
+    all_pb_results = []
 
     for gen in range(1, 20):  # Try up to generation 20
         filename = f"{output_dir}/search_output_{gen}.txt"
@@ -72,26 +76,38 @@ def main():
             break
 
         gen_rationals = extract_rationals_from_file(filename)
-        print(f"Generation {gen}: {len(gen_rationals)} rationals")
-        all_pb_rationals.extend(gen_rationals)
+        print(f"\nGeneration {gen}: {len(gen_rationals)} rationals")
 
-    # Get unique rationals
+        # Compute conductors for this generation
+        gen_results = []
+        for rational_str in gen_rationals:
+            try:
+                X = parse_rational(rational_str)
+                log_conductor = conductor_from_rational(X)
+                gen_results.append({
+                    'rational': rational_str,
+                    'log_conductor': float(log_conductor),
+                    'generation': gen
+                })
+            except Exception as e:
+                pass  # Skip errors
+
+        # Sort and show top 5
+        gen_results.sort(key=lambda x: x['log_conductor'])
+        print(f"  Top 5 rationals in generation {gen}:")
+        for i, result in enumerate(gen_results[:5], 1):
+            print(f"    {i}. t = {result['rational']:>10s} : log(C) = {result['log_conductor']:.6f}")
+
+        all_pb_rationals.extend(gen_rationals)
+        all_pb_results.extend(gen_results)
+
+    # Get unique results (already computed above)
     unique_pb_rationals = list(set(all_pb_rationals))
     print(f"\nTotal unique rationals across all generations: {len(unique_pb_rationals)}")
     print()
 
-    pb_results = []
-    for i, rational_str in enumerate(sorted(unique_pb_rationals), 1):
-        try:
-            X = parse_rational(rational_str)
-            log_conductor = conductor_from_rational(X)
-            pb_results.append({
-                'rational': rational_str,
-                'log_conductor': float(log_conductor)
-            })
-            print(f"  [{i}/{len(unique_pb_rationals)}] t = {rational_str:>10s} : log(C) = {log_conductor:.6f}")
-        except Exception as e:
-            print(f"  [{i}/{len(unique_pb_rationals)}] t = {rational_str:>10s} : ERROR - {e}")
+    # Use the results we already computed
+    pb_results = all_pb_results
 
     print()
     print("="*80)
