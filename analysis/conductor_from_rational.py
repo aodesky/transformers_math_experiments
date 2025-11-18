@@ -28,7 +28,7 @@ a5 = [5816880, 8043880, -27463500, 8043880, 5816880]
 a6 = [3416160, -24166320, 19202040, 19202040, -24166320, 3416160]
 a7 = [-745360, -15468024, 18853764, -138394, 18853764, -15468024, -745360]
 
-def conductor_from_rational(X):
+def ainvs_from_rational(X):
     # X is the rational
 
     A1 = QQ(R(a1).subs(t=X))
@@ -46,8 +46,15 @@ def conductor_from_rational(X):
     C = Curve(f, A=P2)
     E = Jacobian(C)
 
+    ainvs = list(E.ainvs())  # [a1,a2,a3,a4,a6]
+    return ainvs
+
+def conductor_from_rational(X):
+    # X is the rational
+
+    ainvs = ainvs_from_rational(X)
+
     try:
-        ainvs = list(E.ainvs())          # [a1,a2,a3,a4,a6]
         with pari_alarm(CONDUCTOR_TIMEOUT):          # 10 second timeout
             Epari = pari.ellinit(ainvs)  # cypari2 call, no gp/pexpect involved
             red = pari.ellglobalred(Epari)

@@ -1,0 +1,75 @@
+"""Generate ainvs dataset from rationals
+
+Reads data/elliptic_input_with_fourier_coefficients.txt and computes
+the ainvs (a-invariants) for each rational using Mestre's family.
+
+Output format: rational,a1,a2,a3,a4,a6
+"""
+
+import sys
+sys.path.append('..')
+
+from conductor_from_rational import ainvs_from_rational
+from sage.all import QQ
+
+def parse_rational(s):
+    """Parse rational string like '3/5' or '7' into QQ"""
+    s = s.strip()
+    if '/' in s:
+        parts = s.split('/')
+        return QQ(int(parts[0])) / QQ(int(parts[1]))
+    else:
+        return QQ(int(s))
+
+def main():
+    input_file = "../data/elliptic_input_with_fourier_coefficients.txt"
+    output_file = "../data/ainvs_of_big_starter_dataset.txt"
+
+    print(f"Reading from {input_file}")
+    print(f"Writing to {output_file}")
+    print()
+
+    with open(input_file, 'r') as f_in:
+        lines = f_in.readlines()
+
+    total = len(lines)
+    print(f"Processing {total} rationals...")
+    print()
+
+    results = []
+
+    for i, line in enumerate(lines, 1):
+        line = line.strip()
+        if not line:
+            continue
+
+        # Extract rational (first column before comma)
+        rational_str = line.split(',')[0]
+
+        try:
+            X = parse_rational(rational_str)
+            ainvs = ainvs_from_rational(X)
+
+            # Format: rational,a1,a2,a3,a4,a6
+            ainvs_str = ','.join(str(a) for a in ainvs)
+            result_line = f"{rational_str},{ainvs_str}"
+            results.append(result_line)
+
+            if i % 100 == 0:
+                print(f"  Processed {i}/{total} rationals...")
+
+        except Exception as e:
+            print(f"  ERROR on line {i}: {rational_str} - {e}")
+
+    print()
+    print(f"Successfully processed {len(results)}/{total} rationals")
+    print(f"Writing to {output_file}...")
+
+    with open(output_file, 'w') as f_out:
+        for line in results:
+            f_out.write(line + '\n')
+
+    print("Done!")
+
+if __name__ == "__main__":
+    main()
