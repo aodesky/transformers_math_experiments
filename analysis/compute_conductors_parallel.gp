@@ -11,18 +11,27 @@
  * that are slow to factor. If computation exceeds CONDUCTOR_TIMEOUT seconds,
  * the log conductor is set to BIG_LOG_CONDUCTOR (default: 10000).
  *
- * Configuration parameters (edit lines 18-20):
+ * Configuration parameters (edit lines 28-32):
  *   CONDUCTOR_TIMEOUT: timeout in seconds (default: 3)
  *   BIG_LOG_CONDUCTOR: default value for timed-out curves (default: 10000)
  *   MAX_CURVES: limit processing to first N curves; set to 0 to process all (default: 10)
+ *   INPUT_FILE: path to input file
+ *   OUTPUT_FILE: path to output file
  */
 
-default(threadsizemax, 100000000)
+/* Set up parallelization */
+default(threadsizemax, 100000000);
+default(nbthreads, 0);  /* 0 = use all available cores */
+
+print("Parallelization enabled: using ", default(nbthreads), " threads");
+print("");
 
 /* Global configuration parameters */
 CONDUCTOR_TIMEOUT = 3;        /* Timeout in seconds - adjust as needed */
 BIG_LOG_CONDUCTOR = 10000;    /* Default value for timeout cases */
-MAX_CURVES = 0;              /* Max curves to process (0 = process all) - set to small number for testing */
+MAX_CURVES = 10;              /* Max curves to process (0 = process all) - set to small number for testing */
+INPUT_FILE = "../data/ainvs_of_big_starter_dataset.txt";
+OUTPUT_FILE = "../data/gp_computed_log_conductors_of_big_starter_dataset.txt";
 
 /* Function to compute log(conductor) from ainvs - must be self-contained for parapply */
 compute_conductor(ainvs_data) =
@@ -44,10 +53,10 @@ compute_conductor(ainvs_data) =
     [rational, log_conductor]
 }
 
-print("Reading data/ainvs_of_big_starter_dataset.txt...");
+print("Reading ", INPUT_FILE, "...");
 
 /* Read the entire file */
-lines = readstr("../data/ainvs_of_big_starter_dataset.txt");
+lines = readstr(INPUT_FILE);
 total_curves = length(lines);
 
 /* Limit number of curves if MAX_CURVES > 0 */
@@ -67,12 +76,12 @@ print("");
 results = parapply(compute_conductor, parsed_data);
 
 print("");
-print("Writing results to data/log_conductors_of_big_starter_dataset.txt...");
+print("Writing results to ", OUTPUT_FILE, "...");
 
 /* Write results to file */
-write1("../data/log_conductors_of_big_starter_dataset.txt", "");  /* Clear file */
+write1(OUTPUT_FILE, "");  /* Clear file */
 
-for(j=1, n, write("../data/log_conductors_of_big_starter_dataset.txt", results[j][1], ",", results[j][2]));
+for(j=1, n, write(OUTPUT_FILE, results[j][1], ",", results[j][2]));
 
 print("");
 print("Done! Processed ", n, " curves.");
