@@ -4,7 +4,7 @@
 
 """
 
-from sage.all import QQ, PolynomialRing, ProjectiveSpace, Curve, Jacobian, log, RR, ZZ
+from sage.all import QQ, PolynomialRing, ProjectiveSpace, Curve, Jacobian, log, RR, ZZ, EllipticCurve, prime_range
 from sage.libs.pari.all import pari
 from cysignals.signals import AlarmInterrupt
 
@@ -48,6 +48,14 @@ def ainvs_from_rational(X):
 
     ainvs = list(E.ainvs())  # [a1,a2,a3,a4,a6]
     return ainvs
+
+def aps_from_rational(X):
+    # X is the rational
+
+    ainvs = ainvs_from_rational(X)
+
+    E = EllipticCurve(ainvs)
+    return [E.ap(p) for p in prime_range(2, 100)]
 
 def conductor_from_rational(X):
     # X is the rational
