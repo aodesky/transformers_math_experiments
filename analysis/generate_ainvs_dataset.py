@@ -1,12 +1,18 @@
 """Generate ainvs dataset from rationals
 
-Reads data/elliptic_input_with_fourier_coefficients.txt and computes
+Reads an input file containing rationals and computes
 the ainvs (a-invariants) for each rational using Mestre's family.
 
 Output format: rational,a1,a2,a3,a4,a6
+
+Usage:
+    sage -python generate_ainvs_dataset.py <input_file>
+
+Output will be written to ainvs_of_<input_filename> in the same directory.
 """
 
 import sys
+import os
 sys.path.append('..')
 
 from conductor_from_rational import ainvs_from_rational
@@ -22,8 +28,23 @@ def parse_rational(s):
         return QQ(int(s))
 
 def main():
-    input_file = "../data/elliptic_input_with_fourier_coefficients.txt"
-    output_file = "../data/ainvs_of_big_starter_dataset.txt"
+    if len(sys.argv) < 2:
+        print("Usage: sage -python generate_ainvs_dataset.py <input_file>")
+        print("Example: sage -python generate_ainvs_dataset.py ../output/elliptic_gpu_test/le5oyswdvp/search_output_1.txt")
+        sys.exit(1)
+
+    input_file = sys.argv[1]
+
+    # Check if input file exists
+    if not os.path.exists(input_file):
+        print(f"Error: Input file '{input_file}' not found")
+        sys.exit(1)
+
+    # Generate output filename: prepend "ainvs_of_" to the input filename
+    input_dir = os.path.dirname(input_file)
+    input_basename = os.path.basename(input_file)
+    output_basename = f"ainvs_of_{input_basename}"
+    output_file = os.path.join(input_dir, output_basename)
 
     print(f"Reading from {input_file}")
     print(f"Writing to {output_file}")
