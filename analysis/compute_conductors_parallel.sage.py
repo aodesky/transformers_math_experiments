@@ -20,7 +20,7 @@ import sys
 # Global configuration parameters
 CONDUCTOR_TIMEOUT = 1  # Timeout in seconds - adjust as needed
 BIG_LOG_CONDUCTOR = 10000  # Default value for timeout cases
-MAX_CURVES = 20  # Max curves to process (0 = process all)
+MAX_CURVES = 0  # Max curves to process (0 = process all)
 NUM_PROCESSES = 0  # Number of parallel processes (0 = use all cores)
 
 class pari_alarm:
